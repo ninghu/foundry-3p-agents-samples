@@ -10,7 +10,7 @@ These samples showcase how to instrument agents from various frameworks to send 
 
 ```text
 foundry-3p-agents-samples/
-├── vertex_ai/          # Google Vertex AI LangChain agent samples
+├── gcp/                # Google Vertex AI LangChain agent samples
 ├── [future agents]/    # Additional third-party agent integrations
 └── README.md
 ```
@@ -21,7 +21,7 @@ foundry-3p-agents-samples/
 
 Sample implementations demonstrating how to integrate Google Vertex AI's LangChain agents with Azure Application Insights for telemetry and tracing.
 
-**Location:** `vertex_ai/`
+**Location:** `gcp/`
 
 **Features:**
 
@@ -43,7 +43,7 @@ Sample implementations demonstrating how to integrate Google Vertex AI's LangCha
 1. **Install dependencies:**
 
    ```bash
-   pip install -r vertex_ai/requirements.txt
+   pip install -r gcp/requirements.txt
    ```
 
 2. **Authenticate with Google Cloud:**
@@ -61,21 +61,21 @@ Sample implementations demonstrating how to integrate Google Vertex AI's LangCha
 
    ```bash
    # Version 1 (callback-based tracing)
-   python vertex_ai/langchain_agent_v1.py
+   python gcp/vertex_langchain_agent_v1.py
 
    # Version 2 (custom runnable builder)
-   python vertex_ai/langchain_agent_v2.py
+   python gcp/vertex_langchain_agent_v2.py
    ```
 
 #### Implementation Differences
 
-**Version 1 (`langchain_agent_v1.py`):**
+**Version 1 (`vertex_langchain_agent_v1.py`):**
 
 - Passes Azure tracer as a callback in the `query()` method
 - Simpler setup, suitable for basic tracing needs
 - Requires `enable_tracing=False` on the agent to avoid conflicts
 
-**Version 2 (`langchain_agent_v2.py`):**
+**Version 2 (`vertex_langchain_agent_v2.py`):**
 
 - Integrates Azure tracer directly in the custom runnable builder
 - More robust for complex agent architectures
