@@ -1,0 +1,2 @@
+langchain-azure-ai[opentelemetry]
+google-cloud-aiplatform[agent_engines,langchain]
