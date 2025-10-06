@@ -1,82 +1,59 @@
 # Foundry Third-Party Agents Samples
 
-This repository contains code samples demonstrating how to integrate third-party AI agent frameworks with Azure AI Foundry for observability and tracing.
+Minimal samples showing how to instrument third‑party agent frameworks for observability with Azure Application Insights (via OpenTelemetry).
 
 ## Overview
 
-These samples showcase how to instrument agents from various frameworks to send telemetry data to Azure Application Insights using OpenTelemetry, enabling comprehensive monitoring and debugging of agent behavior.
+- Focus: high‑signal, compact examples of tracing agent runs and tool calls.
+- Providers covered: AWS Bedrock, Google Vertex AI.
+- Each folder has its own short README with setup and run steps.
 
-## 📁 Repository Structure
+## Folders
 
-```text
-foundry-3p-agents-samples/
-├── gcp/                # Google Vertex AI LangChain agent samples
-├── [future agents]/    # Additional third-party agent integrations
-└── README.md
+- `aws/` — Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/README.md`.
+- `gcp/` — Vertex AI LangChain agent samples with Azure tracing. See `gcp/README.md`.
+
+## Getting Started
+
+- Pick a provider folder and follow its README.
+- Requirements are listed per folder (e.g., `requirements.txt`).
+
+## HTTP Endpoints
+
+### Vertex AI
+
+POST `https://us-west1-aiplatform.googleapis.com/v1/projects/ninhu-project1/locations/us-west1/reasoningEngines/1304319857705091072:query`
+
+Body:
+
+```
+{
+  "input": { "input": "What is the exchange rate from US dollars to SEK today?" }
+}
 ```
 
-## 🚀 Available Samples
+Headers:
 
-### Vertex AI (LangChain Agents)
+```
+Authorization: Bearer <token>
+```
 
-Sample implementations demonstrating how to integrate Google Vertex AI's LangChain agents with Azure Application Insights for telemetry and tracing.
+Get token:
 
-**Location:** `gcp/`
+```
+gcloud auth application-default print-access-token
+```
 
-**Features:**
+### AWS AgentCore
 
-- Currency exchange agent using LangChain and Vertex AI
-- OpenTelemetry tracing integration with Azure Application Insights
-- Two implementation approaches:
-  - **v1**: Basic integration using callback configuration
-  - **v2**: Advanced integration using custom runnable builder
-- Agent deployment to Vertex AI with tracing enabled
+POST `https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A025211824558%3Aruntime%2Fagentcore_langgraph_agent-1EC4Au3NoU/invocations?qualifier=DEFAULT`
 
-**Key Components:**
+Body:
 
-- **Model**: Gemini 2.0 Flash
-- **Tools**: Currency exchange rate lookup (Frankfurter API)
-- **Tracing**: `AzureAIOpenTelemetryTracer` from `langchain-azure-ai`
+```
+{
+  "prompt": "What is the exchange rate from USD to EUR today?"
+}
+```
 
-#### Quick Start
-
-1. **Install dependencies:**
-
-   ```bash
-   pip install -r gcp/requirements.txt
-   ```
-
-2. **Authenticate with Google Cloud:**
-
-   ```bash
-   gcloud auth application-default login
-   ```
-
-3. **Configure your settings:**
-
-   - Update `project`, `location`, and `application_insights_connection_string` in the agent files
-   - Set your Azure Application Insights connection string
-
-4. **Run the samples:**
-
-   ```bash
-   # Version 1 (callback-based tracing)
-   python gcp/vertex_langchain_agent_v1.py
-
-   # Version 2 (custom runnable builder)
-   python gcp/vertex_langchain_agent_v2.py
-   ```
-
-#### Implementation Differences
-
-**Version 1 (`vertex_langchain_agent_v1.py`):**
-
-- Passes Azure tracer as a callback in the `query()` method
-- Simpler setup, suitable for basic tracing needs
-- Requires `enable_tracing=False` on the agent to avoid conflicts
-
-**Version 2 (`vertex_langchain_agent_v2.py`):**
-
-- Integrates Azure tracer directly in the custom runnable builder
-- More robust for complex agent architectures
-- Tracer is automatically applied to all agent executions
+Auth: AWS Signature Version 4 (SigV4)

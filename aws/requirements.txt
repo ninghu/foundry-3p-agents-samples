@@ -1,0 +1,7 @@
+bedrock-agentcore
+boto3
+langchain
+langchain-aws
+langgraph
+requests
+langchain-azure-ai[opentelemetry]

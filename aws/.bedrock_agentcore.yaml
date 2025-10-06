@@ -1,0 +1,38 @@
+default_agent: agentcore_langgraph_agent
+agents:
+  agentcore_langgraph_agent:
+    name: agentcore_langgraph_agent
+    entrypoint: agentcore_langgraph_agent.py
+    platform: linux/arm64
+    container_runtime: none
+    aws:
+      execution_role: arn:aws:iam::025211824558:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-9632f8fe26
+      execution_role_auto_create: false
+      account: 025211824558
+      region: us-west-2
+      ecr_repository: 025211824558.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-agentcore_langgraph_agent
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: agentcore_langgraph_agent-1EC4Au3NoU
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:025211824558:runtime/agentcore_langgraph_agent-1EC4Au3NoU
+      agent_session_id: d7637c14-968a-45f1-b520-04b3e07d8c7c
+    codebuild:
+      project_name: bedrock-agentcore-agentcore_langgraph_agent-builder
+      execution_role: arn:aws:iam::025211824558:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-9632f8fe26
+      source_bucket: bedrock-agentcore-codebuild-sources-025211824558-us-west-2
+    memory:
+      mode: STM_ONLY
+      memory_id: agentcore_langgraph_agent_mem-lIRh2dDIH5
+      memory_arn: arn:aws:bedrock-agentcore:us-west-2:025211824558:memory/agentcore_langgraph_agent_mem-lIRh2dDIH5
+      memory_name: agentcore_langgraph_agent_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
