@@ -22,7 +22,7 @@ AWS_REGION = "us-west-2"
 BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
 AGENT_NAME = "aws-currency-exchange-agent"
-AGENT_ID = f"{AGENT_NAME}-7x9k2"
+AGENT_ID = f"aws-agent-7x9k2"
 PROVIDER_NAME = "aws.bedrock"
 SYSTEM_PROMPT = "You help users understand currency exchange rates and related context."
 

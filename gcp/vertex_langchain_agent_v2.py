@@ -13,7 +13,7 @@ location="us-west1"
 model_name = "gemini-2.0-flash"
 application_insights_connection_string = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
 agent_name = "gcp-currency-exchange-agent"
-agent_id = f"{agent_name}-m3p8w"
+agent_id = f"gcp-agent-m3p8w"
 provider_name = "gcp.vertex_ai"
 
 vertexai.init(
