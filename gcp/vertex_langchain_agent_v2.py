@@ -12,7 +12,8 @@ project="ninhu-project1"
 location="us-west1"
 model_name = "gemini-2.0-flash"
 application_insights_connection_string = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
-agent_name = "currency-exchange-agent"
+agent_name = "gcp-currency-exchange-agent"
+agent_id = f"{agent_name}-m3p8w"
 
 vertexai.init(
     project=project,
@@ -95,6 +96,7 @@ def create_agent():
             connection_string=application_insights_connection_string,
             enable_content_recording=True,
             name=agent_name,
+            id=agent_id,
         )  
         return executor.with_config(callbacks=[azure_tracer])
     

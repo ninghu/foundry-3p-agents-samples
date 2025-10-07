@@ -21,7 +21,7 @@ agents:
     bedrock_agentcore:
       agent_id: agentcore_langgraph_agent-1EC4Au3NoU
       agent_arn: arn:aws:bedrock-agentcore:us-west-2:025211824558:runtime/agentcore_langgraph_agent-1EC4Au3NoU
-      agent_session_id: d7637c14-968a-45f1-b520-04b3e07d8c7c
+      agent_session_id: null
     codebuild:
       project_name: bedrock-agentcore-agentcore_langgraph_agent-builder
       execution_role: arn:aws:iam::025211824558:role/AmazonBedrockAgentCoreSDKCodeBuild-us-west-2-9632f8fe26

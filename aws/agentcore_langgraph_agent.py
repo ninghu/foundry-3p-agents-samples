@@ -26,7 +26,8 @@ APPLICATION_INSIGHTS_CONNECTION_STRING = (
     "LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;"
     "ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
 )
-AGENT_NAME = "currency-exchange-agent"
+AGENT_NAME = "aws-currency-exchange-agent"
+AGENT_ID = f"{AGENT_NAME}-m3p8w"
 SYSTEM_PROMPT = "You help users understand currency exchange rates and related context."
 
 
@@ -91,6 +92,7 @@ def _create_graph_executor():
         connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
         enable_content_recording=True,
         name=AGENT_NAME,
+        id=AGENT_ID,
     )
     graph = _build_langgraph()
     return graph, tracer
