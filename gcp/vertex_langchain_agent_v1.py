@@ -7,8 +7,9 @@ from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
 project="ninhu-project1"
 location="us-west1"
 model_name = "gemini-2.0-flash"
-application_insights_connection_string = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
-agent_name = "currency-exchange-agent"
+application_insights_connection_string = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
+agent_name = "gcp-currency-exchange-agent"
+provider_name = "gcp.vertex_ai"
 
 azure_tracer = AzureAIOpenTelemetryTracer(
     connection_string=application_insights_connection_string,
@@ -90,6 +91,7 @@ def deploy_agent(local_agent):
             "requirements": [
                 "google-cloud-aiplatform[agent_engines,langchain]",
                 "langchain-azure-ai[opentelemetry]",
+                "python-dotenv",
                 "cloudpickle",
                 "pydantic",
             ],

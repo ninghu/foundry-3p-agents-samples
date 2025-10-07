@@ -11,9 +11,10 @@ from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
 project="ninhu-project1"
 location="us-west1"
 model_name = "gemini-2.0-flash"
-application_insights_connection_string = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
+application_insights_connection_string = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
 agent_name = "gcp-currency-exchange-agent"
 agent_id = f"{agent_name}-m3p8w"
+provider_name = "gcp.vertex_ai"
 
 vertexai.init(
     project=project,
@@ -97,6 +98,7 @@ def create_agent():
             enable_content_recording=True,
             name=agent_name,
             id=agent_id,
+            provider_name=provider_name,
         )  
         return executor.with_config(callbacks=[azure_tracer])
     
@@ -135,6 +137,7 @@ def deploy_agent(local_agent):
             "requirements": [
                 "google-cloud-aiplatform[agent_engines,langchain]",
                 "langchain-azure-ai[opentelemetry]",
+                "python-dotenv",
                 "cloudpickle",
                 "pydantic",
             ],
@@ -147,11 +150,11 @@ def deploy_agent(local_agent):
 if __name__ == "__main__":
     local_agent = create_agent()
     
-    response = query_agent(local_agent, "What is the exchange rate from US dollars to SEK today?")
-    print(f"Query response: {response}")
+    # response = query_agent(local_agent, "What is the exchange rate from US dollars to SEK today?")
+    # print(f"Query response: {response}")
     
-    skip_deploy = True
+    skip_deploy = False
     if not skip_deploy:
         remote_agent = deploy_agent(local_agent)
         print(f"Remote agent name: {remote_agent.api_resource.name}")
-        print("To authenticate with Google Cloud, run: gcloud auth application-default login")
+        print("To get access token, run: gcloud auth application-default print-access-token")

@@ -20,14 +20,10 @@ from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
 
 AWS_REGION = "us-west-2"
 BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-APPLICATION_INSIGHTS_CONNECTION_STRING = (
-    "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;"
-    "IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;"
-    "LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;"
-    "ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
-)
+APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
 AGENT_NAME = "aws-currency-exchange-agent"
-AGENT_ID = f"{AGENT_NAME}-m3p8w"
+AGENT_ID = f"{AGENT_NAME}-7x9k2"
+PROVIDER_NAME = "aws.bedrock"
 SYSTEM_PROMPT = "You help users understand currency exchange rates and related context."
 
 
@@ -93,6 +89,7 @@ def _create_graph_executor():
         enable_content_recording=True,
         name=AGENT_NAME,
         id=AGENT_ID,
+        provider_name=PROVIDER_NAME,
     )
     graph = _build_langgraph()
     return graph, tracer
