@@ -11,7 +11,7 @@ from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
 project="ninhu-project1"
 location="us-west1"
 model_name = "gemini-2.0-flash"
-application_insights_connection_string = "InstrumentationKey=e2d97709-3700-4cb2-97cd-0c9731012cd3;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=9e7ddef3-76bd-4af3-a9ff-4f0095502cfa"
+application_insights_connection_string = "InstrumentationKey=fab6ed44-6fc3-45e8-a8a9-6a10d8ac4868;IngestionEndpoint=https://norwayeast-0.in.applicationinsights.azure.com/;LiveEndpoint=https://norwayeast.livediagnostics.monitor.azure.com/;ApplicationId=17edf920-0611-4341-a46d-af587e423154"
 agent_name = "gcp-currency-exchange-agent"
 agent_id = f"gcp-agent-m3p8w"
 provider_name = "gcp.vertex_ai"
