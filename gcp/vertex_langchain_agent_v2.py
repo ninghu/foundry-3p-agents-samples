@@ -4,6 +4,7 @@ from typing import Sequence
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import BasePromptTemplate
 from langchain_core.tools import BaseTool
+from langchain_core.tools import tool
 
 from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
 
@@ -21,6 +22,7 @@ vertexai.init(
     location=location,
 )
 
+@tool
 def get_exchange_rate(
     currency_from: str = "USD",
     currency_to: str = "EUR",
@@ -70,14 +72,6 @@ def create_agent():
         
         tools = tools or []
         agent_executor_kwargs = agent_executor_kwargs or {}
-
-        # Convert Python functions to LangChain tools if needed
-        converted_tools = []
-        for t in tools:
-            if callable(t) and not hasattr(t, 'name'):
-                converted_tools.append(tool(t))
-            else:
-                converted_tools.append(t)
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a helpful assistant for currency exchange rates."),
@@ -85,10 +79,10 @@ def create_agent():
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
 
-        agent = create_tool_calling_agent(model, converted_tools, prompt)
+        agent = create_tool_calling_agent(model, tools, prompt)
         executor = AgentExecutor(
             agent=agent, 
-            tools=converted_tools,
+            tools=tools,
             **agent_executor_kwargs
         )
 
@@ -150,10 +144,10 @@ def deploy_agent(local_agent):
 if __name__ == "__main__":
     local_agent = create_agent()
     
-    # response = query_agent(local_agent, "What is the exchange rate from US dollars to SEK today?")
-    # print(f"Query response: {response}")
+    response = query_agent(local_agent, "What is the exchange rate from US dollars to SEK today?")
+    print(f"Query response: {response}")
     
-    skip_deploy = False
+    skip_deploy = True
     if not skip_deploy:
         remote_agent = deploy_agent(local_agent)
         print(f"Remote agent name: {remote_agent.api_resource.name}")
