@@ -4,4 +4,4 @@ langchain
 langchain-aws
 langgraph
 requests
-langchain-azure-ai[opentelemetry]
+langchain-azure-ai[opentelemetry]==0.1.8
