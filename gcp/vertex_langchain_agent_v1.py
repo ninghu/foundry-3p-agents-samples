@@ -90,7 +90,7 @@ def deploy_agent(local_agent):
             "staging_bucket": "gs://ninhu-project1-vertex-agents",
             "requirements": [
                 "google-cloud-aiplatform[agent_engines,langchain]",
-                "langchain-azure-ai[opentelemetry]",
+                "langchain-azure-ai[opentelemetry]==0.1.8",
                 "python-dotenv",
                 "cloudpickle",
                 "pydantic",
