@@ -20,7 +20,7 @@ from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
 
 AWS_REGION = "us-west-2"
 BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=fab6ed44-6fc3-45e8-a8a9-6a10d8ac4868;IngestionEndpoint=https://norwayeast-0.in.applicationinsights.azure.com/;LiveEndpoint=https://norwayeast.livediagnostics.monitor.azure.com/;ApplicationId=17edf920-0611-4341-a46d-af587e423154"
+APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
 AGENT_NAME = "aws-currency-exchange-agent"
 AGENT_ID = f"aws-agent-7x9k2"
 PROVIDER_NAME = "aws.bedrock"

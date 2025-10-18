@@ -10,50 +10,12 @@ Minimal samples showing how to instrument third‑party agent frameworks for obs
 
 ## Folders
 
-- `aws/` — Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/README.md`.
-- `gcp/` — Vertex AI LangChain agent samples with Azure tracing. See `gcp/README.md`.
+- `aws/agent_core/` - Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/agent_core/README.md`.
+- `gcp/vertax/` - Vertex AI LangChain agent sample with Azure tracing. See `gcp/vertax/README.md`.
 
 ## Getting Started
 
 - Pick a provider folder and follow its README.
-- Requirements are listed per folder (e.g., `requirements.txt`).
+- Requirements are listed per folder (e.g., `aws/agent_core/requirements.txt`).
 
-## HTTP Endpoints
-
-### Vertex AI
-
-POST `https://us-west1-aiplatform.googleapis.com/v1/projects/ninhu-project1/locations/us-west1/reasoningEngines/1304319857705091072:query`
-
-Body:
-
-```
-{
-  "input": { "input": "What is the exchange rate from US dollars to SEK today?" }
-}
-```
-
-Headers:
-
-```
-Authorization: Bearer <token>
-```
-
-Get token:
-
-```
-gcloud auth application-default print-access-token
-```
-
-### AWS AgentCore
-
-POST `https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A025211824558%3Aruntime%2Fagentcore_langgraph_agent-1EC4Au3NoU/invocations?qualifier=DEFAULT`
-
-Body:
-
-```
-{
-  "prompt": "What is the exchange rate from USD to EUR today?"
-}
-```
-
-Auth: AWS Signature Version 4 (SigV4)
+For sample HTTP endpoints and payloads, see the provider READMEs.
