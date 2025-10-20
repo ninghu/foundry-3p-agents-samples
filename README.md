@@ -1,21 +1,11 @@
 # Foundry Third-Party Agents Samples
 
-Minimal samples showing how to instrument third‑party agent frameworks for observability with Azure Application Insights (via OpenTelemetry).
-
-## Overview
-
-- Focus: high‑signal, compact examples of tracing agent runs and tool calls.
-- Providers covered: AWS Bedrock, Google Vertex AI.
-- Each folder has its own short README with setup and run steps.
+Tiny examples that show how to plug Azure Application Insights into popular agent stacks.
 
 ## Folders
 
-- `aws/agent_core/` - Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/agent_core/README.md`.
-- `gcp/vertax/` - Vertex AI LangChain agent sample with Azure tracing. See `gcp/vertax/README.md`.
+- `aws/agent_core/` – LangGraph + AgentCore sample for Amazon Bedrock.
+- `gcp/vertax/` – LangChain agent running on Google Vertex AI.
+- `gcp/a2a/remote_agent/` – LangGraph currency agent with local runner, evaluator, and Cloud Run deployment script.
 
-## Getting Started
-
-- Pick a provider folder and follow its README.
-- Requirements are listed per folder (e.g., `aws/agent_core/requirements.txt`).
-
-For sample HTTP endpoints and payloads, see the provider READMEs.
+Each folder has its own README with setup steps, required environment variables, and deployment notes. Pick the sample you care about, install the listed requirements, follow the per-folder README, and you’ll see traces land in Application Insights.

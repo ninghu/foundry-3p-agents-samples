@@ -1,0 +1,8 @@
+# Shared dependencies for the A2A samples in this folder.
+
+# Reuse the remote agent stack (LangGraph service + a2a runtime).
+-r remote_agent/requirements.txt
+
+# Evaluation tooling for agent_eval.py.
+azure-ai-evaluation>=1.11.2
+azure-identity>=1.17.0
