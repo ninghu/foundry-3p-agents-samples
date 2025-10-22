@@ -9,7 +9,13 @@ from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import BasePromptTemplate
 from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
-from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
+
+try:
+    from langchain_azure_ai.callbacks.tracers import (
+        AzureAIOpenTelemetryTracer,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    AzureAIOpenTelemetryTracer = None  # type: ignore
 
 
 project="ninhu-project1"
@@ -86,14 +92,16 @@ def custom_runnable_builder(
         **agent_executor_kwargs
     )
 
-    # Enable sending traces to Azure Application Insights
+    if AzureAIOpenTelemetryTracer is None:
+        return executor
+
     azure_tracer = AzureAIOpenTelemetryTracer(
         connection_string=application_insights_connection_string,
         enable_content_recording=True,
         name=agent_name,
         id=agent_id,
         provider_name=provider_name,
-    )  
+    )
     return executor.with_config(callbacks=[azure_tracer])
 
 
@@ -149,9 +157,9 @@ if __name__ == "__main__":
     print(f"Query response: {response}")
     
     # Deploy the agent to Vertex AI
-    # remote_agent = deploy_agent(local_agent)
-    # print(f"Remote agent name: {remote_agent.api_resource.name}")
-    # print("To get access token, run: gcloud auth application-default print-access-token")
+    remote_agent = deploy_agent(local_agent)
+    print(f"Remote agent name: {remote_agent.api_resource.name}")
+    print("To get access token, run: gcloud auth application-default print-access-token")
 
     # Flush OpenTelemetry logging handlers before interpreter shutdown
     logging.shutdown()

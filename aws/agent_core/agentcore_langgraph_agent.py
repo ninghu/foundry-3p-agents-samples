@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any, Dict, List, Optional
 
 import boto3
 import requests
@@ -13,10 +13,17 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 
-from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer  # type: ignore
+import logging
+
+try:
+    from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    AzureAIOpenTelemetryTracer = None  # type: ignore
 
 
 from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
+
+logger = logging.getLogger(__name__)
 
 AWS_REGION = "us-west-2"
 BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
@@ -84,13 +91,19 @@ def _last_message_content(messages: List[Any]) -> str:
 
 
 def _create_graph_executor():
-    tracer = AzureAIOpenTelemetryTracer(
-        connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
-        enable_content_recording=True,
-        name=AGENT_NAME,
-        id=AGENT_ID,
-        provider_name=PROVIDER_NAME,
-    )
+    tracer: Optional[Any] = None
+    if AzureAIOpenTelemetryTracer is not None:
+        tracer = AzureAIOpenTelemetryTracer(
+            connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
+            enable_content_recording=True,
+            name=AGENT_NAME,
+            id=AGENT_ID,
+            provider_name=PROVIDER_NAME,
+        )
+    else:
+        logger.warning(
+            "langchain-azure-ai not installed; continuing without Azure Application Insights tracing.",
+        )
     graph = _build_langgraph()
     return graph, tracer
 

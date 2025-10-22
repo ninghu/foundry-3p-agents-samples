@@ -11,6 +11,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY requirements.txt requirements.txt
 
+# Install system dependencies needed for git-based pip installs
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies using pip
 RUN pip install -r requirements.txt
 
@@ -23,7 +28,5 @@ EXPOSE 8000
 
 # Copy entire project (respecting .dockerignore)
 COPY . .
-
-RUN pip show langchain-azure-ai
 
 CMD ["python", "-m", "agentcore_langgraph_agent"]
