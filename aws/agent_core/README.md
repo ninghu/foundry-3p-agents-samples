@@ -1,31 +1,40 @@
 # AWS Bedrock + LangGraph (AgentCore)
 
-Simple currency-exchange agent running on AWS Bedrock via LangGraph/AgentCore, with traces sent to Azure Application Insights.
+Simple currency-exchange agent running on AWS Bedrock via LangGraph/AgentCore, with optional traces sent to Azure Application Insights. Configuration is loaded from a `.env` file.
 
-## Quick Start
+## Quick start
+1. Copy the sample environment file and edit the placeholders:
+   ```bash
+   cd aws/agent_core
+   cp .env.example .env
+   ```
+   Required values:
+   - `AWS_REGION` and `BEDROCK_MODEL_ID` for the Bedrock model you plan to invoke.
+   - Optional: `APPLICATION_INSIGHTS_CONNECTION_STRING` plus the `AGENT_*` overrides if you want Azure tracing metadata.
 
-- Install deps (from repo root): `pip install -r aws/agent_core/requirements.txt`
-- Configure AWS auth (e.g., environment/CLI) and update constants in `aws/agent_core/agentcore_langgraph_agent.py` (`AWS_REGION`, `BEDROCK_MODEL_ID`, `APPLICATION_INSIGHTS_CONNECTION_STRING`, `AGENT_NAME`, `AGENT_ID`).
-- Run locally: `python aws/agent_core/agentcore_langgraph_agent.py`
-- Optional Docker: `docker build -t agentcore-aws aws/agent_core && docker run -p 8080:8080 agentcore-aws`
+2. Install dependencies (from the repo root or a virtual environment):
+   ```bash
+   pip install -r aws/agent_core/requirements.txt
+   ```
 
-## HTTP Endpoint
+3. Configure AWS credentials (e.g., `aws configure`, environment variables, or an assumed role) that permit calling the Bedrock Runtime service.
 
-POST `https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A025211824558%3Aruntime%2Fagentcore_langgraph_agent-1EC4Au3NoU/invocations?qualifier=DEFAULT`
+4. Run the app locally:
+   ```bash
+   python aws/agent_core/agentcore_langgraph_agent.py
+   ```
+   The AgentCore application exposes the entrypoint defined with `@app.entrypoint` and can be invoked with a JSON payload containing `prompt`.
 
-Body:
+5. Optional – Docker build & run:
+   ```bash
+   docker build -t agentcore-aws aws/agent_core
+   docker run --rm -p 8080:8080 --env-file aws/agent_core/.env agentcore-aws
+   ```
 
-```
-{
-  "prompt": "What is the exchange rate from USD to EUR today?"
-}
-```
+## Tracing
+- `AzureAIOpenTelemetryTracer` is enabled automatically when the optional dependency is installed and `APPLICATION_INSIGHTS_CONNECTION_STRING` is provided. Otherwise, the agent logs that tracing is disabled and continues normally.
+- Customize `AGENT_NAME`, `AGENT_ID`, and `PROVIDER_NAME` in `.env` to control how telemetry appears in Application Insights.
 
-Auth: AWS Signature Version 4 (SigV4)
-
-## Files
-
-- `agentcore_langgraph_agent.py` - main app; emits traces via `AzureAIOpenTelemetryTracer`.
-- `.bedrock_agentcore.yaml` - AgentCore runtime/deployment config (update IDs/ARNs to match your AWS account).
-- `Dockerfile`, `requirements.txt` - container and Python deps.
-
+## Deployment notes
+- The included `.bedrock_agentcore.yaml` supplies a baseline runtime configuration. Update ARNs/IDs to match your AWS account before deploying.
+- Keep sensitive values (Azure connection strings, customized prompts) in `.env` or a secret manager rather than hard-coding them.

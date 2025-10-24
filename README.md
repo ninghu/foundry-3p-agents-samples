@@ -4,8 +4,9 @@ Tiny examples that show how to plug Azure Application Insights into popular agen
 
 ## Folders
 
-- `aws/agent_core/` – LangGraph + AgentCore sample for Amazon Bedrock.
-- `gcp/vertax/` – LangChain agent running on Google Vertex AI.
-- `gcp/a2a/remote_agent/` – LangGraph currency agent with local runner, evaluator, and Cloud Run deployment script.
+- `aws/agent_core/` - LangGraph + AgentCore sample for Amazon Bedrock.
+- `gcp/vertex/` - LangChain agent running on Google Vertex AI.
+- `gcp/a2a/remote_agent/` - LangGraph currency agent with local runner, evaluator, and Cloud Run deployment script.
+- `gcp/cloud_run_agent/` - FastAPI + LangGraph Cloud Run sample with Azure Application Insights tracing.
 
-Each folder has its own README with setup steps, required environment variables, and deployment notes. Pick the sample you care about, install the listed requirements, follow the per-folder README, and you’ll see traces land in Application Insights.
+Each folder has its own README with setup steps, required environment variables, and deployment notes. Pick the sample you care about, install the listed requirements, follow the per-folder README, and you'll see traces land in Application Insights.

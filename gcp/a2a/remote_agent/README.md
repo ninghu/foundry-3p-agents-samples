@@ -10,17 +10,20 @@ This folder contains a LangGraph-based A2A agent derived from the upstream [a2a-
   - or `TOOL_LLM_URL`, `TOOL_LLM_NAME`, and `API_KEY` for an OpenAI-compatible endpoint
 - Docker & gcloud CLIs (for Cloud Run)
 - A configured GCP project with Cloud Run enabled
+- A `.env` file (copy `gcp/a2a/.env.example` to `gcp/a2a/.env` and fill in the values)
 
 ## Local Development
 
 ```bash
+cp gcp/a2a/.env.example gcp/a2a/.env  # if you haven't already
+# edit gcp/a2a/.env with your keys
+
 cd gcp/a2a/remote_agent
 python -m venv .venv
 source .venv/bin/activate  # on Windows use .venv\Scripts\Activate.ps1
 pip install --upgrade pip
 pip install -r requirements.txt
 
-export GOOGLE_API_KEY="..."
 python -m remote_agent --host 127.0.0.1 --port 8080
 ```
 
@@ -52,10 +55,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --image "${IMAGE}" \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars GOOGLE_API_KEY=YOUR_GEMINI_KEY
-
-# If using an OpenAI-style endpoint:
-# --set-env-vars model_source=openai,TOOL_LLM_URL=...,TOOL_LLM_NAME=...,API_KEY=...
+  --set-env-vars "$(tr '\n' ',' < ../.env | sed 's/,$//')"
 ```
 
 Cloud Run automatically injects the `PORT` environment variable; the entrypoint reads it and listens on the correct port. If you need private access, remove `--allow-unauthenticated` and configure ingress/IAP as required.

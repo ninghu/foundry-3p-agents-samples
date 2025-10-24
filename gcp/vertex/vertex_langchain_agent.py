@@ -9,6 +9,7 @@ from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import BasePromptTemplate
 from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
+from dotenv import load_dotenv
 
 try:
     from langchain_azure_ai.callbacks.tracers import (
@@ -18,17 +19,32 @@ except ImportError:  # pragma: no cover - optional dependency
     AzureAIOpenTelemetryTracer = None  # type: ignore
 
 
-project="ninhu-project1"
-location="us-west1"
-model_name = "gemini-2.0-flash"
-application_insights_connection_string = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
-agent_name = "gcp-currency-exchange-agent"
-agent_id = f"gcp-agent-m3p8w"
-provider_name = "gcp.vertex_ai"
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+if not PROJECT:
+    raise RuntimeError("Set GOOGLE_CLOUD_PROJECT in your environment or .env file.")
+
+LOCATION = os.getenv("GOOGLE_CLOUD_REGION", "us-central1")
+MODEL_NAME = os.getenv("VERTEX_MODEL_NAME", "gemini-2.0-flash")
+APPLICATION_INSIGHTS_CONNECTION_STRING = os.getenv("APPLICATION_INSIGHTS_CONNECTION_STRING")
+AGENT_NAME = os.getenv("VERTEX_AGENT_NAME", "gcp-currency-exchange-agent")
+AGENT_ID = os.getenv("VERTEX_AGENT_ID", "gcp-agent")
+PROVIDER_NAME = os.getenv("VERTEX_PROVIDER_NAME", "gcp.vertex_ai")
+GCS_DIR_NAME = os.getenv("VERTEX_GCS_DIR_NAME", "dev")
+STAGING_BUCKET = os.getenv("VERTEX_STAGING_BUCKET")
+
+if APPLICATION_INSIGHTS_CONNECTION_STRING:
+    logger.info("Azure Application Insights tracing enabled for Vertex agent.")
+else:
+    logger.info("APPLICATION_INSIGHTS_CONNECTION_STRING not provided; tracing disabled.")
 
 vertexai.init(
-    project=project,
-    location=location,
+    project=PROJECT,
+    location=LOCATION,
 )
 
 @tool
@@ -92,15 +108,15 @@ def custom_runnable_builder(
         **agent_executor_kwargs
     )
 
-    if AzureAIOpenTelemetryTracer is None:
+    if AzureAIOpenTelemetryTracer is None or not APPLICATION_INSIGHTS_CONNECTION_STRING:
         return executor
 
     azure_tracer = AzureAIOpenTelemetryTracer(
-        connection_string=application_insights_connection_string,
+        connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
         enable_content_recording=True,
-        name=agent_name,
-        id=agent_id,
-        provider_name=provider_name,
+        name=AGENT_NAME,
+        id=AGENT_ID,
+        provider_name=PROVIDER_NAME,
     )
     return executor.with_config(callbacks=[azure_tracer])
 
@@ -108,7 +124,7 @@ def custom_runnable_builder(
 def create_agent():
     """Create and return a local LangChain agent."""
     return agent_engines.LangchainAgent(
-        model=model_name,
+        model=MODEL_NAME,
         tools=[get_exchange_rate],
         enable_tracing=False,  # Important: Default is False, but when it's turned on, azure tracer stopped working
         runnable_builder=custom_runnable_builder,  # Use custom builder to set azure tracer callback
@@ -129,19 +145,24 @@ def query_agent(local_agent, input: str):
 def deploy_agent(local_agent):
     """Deploy the agent to Vertex AI."""
     client = vertexai.Client(
-        project=project,
-        location=location,
+        project=PROJECT,
+        location=LOCATION,
     )
 
     # Provide requirements.txt path for remote packaging
     requirements_path = str(Path(__file__).resolve().parent / "requirements.txt")
 
+    if not STAGING_BUCKET:
+        raise RuntimeError(
+            "Set VERTEX_STAGING_BUCKET in your environment to deploy the agent.",
+        )
+
     remote_agent = client.agent_engines.create(
         agent=local_agent,
         config={
-            "display_name": agent_name,
-            "gcs_dir_name": "dev",
-            "staging_bucket": "gs://ninhu-project1-vertex-agents",
+            "display_name": AGENT_NAME,
+            "gcs_dir_name": GCS_DIR_NAME,
+            "staging_bucket": STAGING_BUCKET,
             "requirements": requirements_path,
         },
     )
@@ -156,10 +177,16 @@ if __name__ == "__main__":
     response = query_agent(local_agent, "What is the exchange rate from US dollars to SEK today?")
     print(f"Query response: {response}")
     
-    # Deploy the agent to Vertex AI
-    remote_agent = deploy_agent(local_agent)
-    print(f"Remote agent name: {remote_agent.api_resource.name}")
-    print("To get access token, run: gcloud auth application-default print-access-token")
+    # Deploy the agent to Vertex AI (if configured)
+    if STAGING_BUCKET:
+        remote_agent = deploy_agent(local_agent)
+        print(f"Remote agent name: {remote_agent.api_resource.name}")
+        print("To get access token, run: gcloud auth application-default print-access-token")
+    else:
+        logger.info(
+            "VERTEX_STAGING_BUCKET not set; skipping deployment step. "
+            "Set it in .env to enable deploy_agent execution.",
+        )
 
     # Flush OpenTelemetry logging handlers before interpreter shutdown
     logging.shutdown()

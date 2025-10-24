@@ -5,6 +5,7 @@ langchain_google_vertexai
 wrapt==1.17.3
 google-cloud-aiplatform[agent_engines]
 langchain
+python-dotenv>=1.0.1
 cloudpickle
 pydantic==2.12.3
 pydantic-core==2.41.4

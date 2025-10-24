@@ -3,6 +3,7 @@ from collections.abc import AsyncIterable
 from typing import Any, Literal
 
 import httpx
+from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -11,6 +12,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
 
+
+load_dotenv()
 
 memory = MemorySaver()
 
@@ -68,12 +71,24 @@ class CurrencyAgent:
     def __init__(self):
         model_source = os.getenv('model_source', 'google')
         if model_source == 'google':
-            self.model = ChatGoogleGenerativeAI(model='gemini-2.0-flash')
+            model_name = os.getenv('GOOGLE_MODEL_NAME')
+            if not model_name:
+                raise EnvironmentError(
+                    'GOOGLE_MODEL_NAME must be set when model_source=google.',
+                )
+            self.model = ChatGoogleGenerativeAI(model=model_name)
         else:
+            openai_model = os.getenv('TOOL_LLM_NAME')
+            openai_base = os.getenv('TOOL_LLM_URL')
+            openai_key = os.getenv('API_KEY')
+            if not all([openai_model, openai_base, openai_key]):
+                raise EnvironmentError(
+                    'TOOL_LLM_NAME, TOOL_LLM_URL, and API_KEY must be set when model_source is not google.',
+                )
             self.model = ChatOpenAI(
-                model=os.getenv('TOOL_LLM_NAME'),
-                openai_api_key=os.getenv('API_KEY', 'EMPTY'),
-                openai_api_base=os.getenv('TOOL_LLM_URL'),
+                model=openai_model,
+                openai_api_key=openai_key,
+                openai_api_base=openai_base,
                 temperature=0,
             )
         self.tools = [get_exchange_rate]
