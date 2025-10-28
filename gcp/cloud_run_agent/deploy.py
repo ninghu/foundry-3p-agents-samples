@@ -79,7 +79,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--service-name",
-        default="exchange-rate-agent",
+        default="gcp-cloud-run-agent",
         help="Cloud Run service name.",
     )
     parser.add_argument(

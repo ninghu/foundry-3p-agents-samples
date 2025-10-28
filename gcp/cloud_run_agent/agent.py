@@ -508,7 +508,7 @@ def should_continue(state: PlannerState) -> str:
 
 
 def build_workflow() -> StateGraph:
-    graph = StateGraph(PlannerState)
+    graph = StateGraph(PlannerState, name ="TravelPlannerWorkflow")
     graph.add_node("coordinator", coordinator_node)
     graph.add_node("flight_specialist", flight_specialist_node)
     graph.add_node("hotel_specialist", hotel_specialist_node)
