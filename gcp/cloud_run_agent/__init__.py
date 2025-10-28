@@ -1,5 +1,5 @@
-"""Cloud Run sample: LangGraph-based exchange rate agent with Azure tracing."""
+"""Cloud Run sample: LangGraph-based travel planner agent with Azure tracing."""
 
-from .agent import ExchangeRateAgent
+from .agent import TravelPlannerAgent
 
-__all__ = ["ExchangeRateAgent"]
+__all__ = ["TravelPlannerAgent"]

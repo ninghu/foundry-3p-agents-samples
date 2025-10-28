@@ -1,6 +1,5 @@
 fastapi>=0.115.0
 httpx>=0.28.1
-langchain-azure-ai>=1.0.0
 langchain-google-genai>=2.0.10
 langgraph>=1.0.0
 python-dotenv>=1.0.1
@@ -9,3 +8,4 @@ typing-extensions>=4.12.2
 uvicorn[standard]>=0.34.0
 azure-monitor-opentelemetry-exporter==1.0.0b42
 azure-monitor-opentelemetry
+langchain-azure-ai[opentelemetry]@git+https://github.com/nagkumar91/langchain-azure.git@tracer-semconv-alignment#subdirectory=libs/azure-ai
