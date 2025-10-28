@@ -8,6 +8,7 @@ so it fits the GCP sample collection.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Annotated, Any, Dict, List, Optional, Sequence, TypedDict
@@ -37,6 +38,13 @@ except ImportError as exc:  # pragma: no cover - optional dependency guard
     ) from exc
 
 load_dotenv()
+
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
+logging.getLogger("azure.monitor.opentelemetry.exporter.export._base").setLevel(
+    logging.WARNING
+)
 
 
 # ---------------------------------------------------------------------------

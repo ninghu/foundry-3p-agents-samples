@@ -32,6 +32,12 @@ except ImportError:  # pragma: no cover - compatibility with older LangGraph rel
 from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
+logging.getLogger("azure.monitor.opentelemetry.exporter.export._base").setLevel(
+    logging.WARNING
+)
 
 try:  # Optional dependency, resolved at runtime
     from langchain_google_genai import ChatGoogleGenerativeAI

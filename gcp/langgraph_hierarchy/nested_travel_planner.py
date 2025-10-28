@@ -7,6 +7,7 @@ keeps Azure Application Insights tracing enabled via langchain-azure-ai.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import random
 from datetime import datetime, timedelta
@@ -48,6 +49,13 @@ except ImportError:  # pragma: no cover
 
 
 load_dotenv()
+
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
+logging.getLogger("azure.monitor.opentelemetry.exporter.export._base").setLevel(
+    logging.WARNING
+)
 
 
 DESTINATIONS = {
