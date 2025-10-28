@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Annotated, Any, Dict, List, Optional
 
 import boto3
-import os
 import requests
 from typing_extensions import TypedDict
 
@@ -22,27 +21,22 @@ except ImportError:  # pragma: no cover - optional dependency
     AzureAIOpenTelemetryTracer = None  # type: ignore
 
 
-from dotenv import load_dotenv
 from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
-def _require_env(key: str) -> str:
-    value = os.getenv(key)
-    if not value:
-        raise RuntimeError(f"Missing required environment variable '{key}'. Populate aws/agent_core/.env first.")
-    return value
-
-
-AWS_REGION = _require_env("AWS_REGION")
-BEDROCK_MODEL_ID = _require_env("BEDROCK_MODEL_ID")
-APPLICATION_INSIGHTS_CONNECTION_STRING = os.getenv("APPLICATION_INSIGHTS_CONNECTION_STRING")
-AGENT_NAME = _require_env("AGENT_NAME")
-AGENT_ID = _require_env("AGENT_ID")
-PROVIDER_NAME = _require_env("PROVIDER_NAME")
+AWS_REGION = "us-west-2"
+BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+APPLICATION_INSIGHTS_CONNECTION_STRING = (
+    "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;"
+    "IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;"
+    "LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;"
+    "ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
+)
+AGENT_NAME = "aws-currency-exchange-agent"
+AGENT_ID = "aws-agent-7x9k2"
+PROVIDER_NAME = "aws.bedrock"
 SYSTEM_PROMPT = (
     "You help users understand currency exchange rates and related context."
 )
