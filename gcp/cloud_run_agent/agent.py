@@ -196,17 +196,6 @@ def _model_name() -> str:
     return os.getenv("GOOGLE_MODEL_NAME", "models/gemini-1.5-pro")
 
 
-def _resolve_server_attributes() -> tuple[str, Optional[int]]:
-    base_url = os.getenv(
-        "GOOGLE_API_BASE",
-        "https://generativelanguage.googleapis.com",
-    )
-    normalized = base_url if "://" in base_url else f"https://{base_url}"
-    parsed = urlparse(normalized)
-    hostname = parsed.hostname or normalized.replace("https://", "").replace("http://", "").rstrip("/")
-    return hostname, parsed.port
-
-
 def _build_llm(agent_name: str, *, temperature: float) -> Any:
     """Instantiate an LLM client for a given agent."""
     if ChatGoogleGenerativeAI is None:
@@ -244,7 +233,11 @@ def _agent_metadata(
         "gen_ai.request.model": _model_name(),
         "gen_ai.request.temperature": temperature,
         "gen_ai.output.type": "text",
+        "otel_agent_span": True,
+        "langgraph_node": agent_name,
     }
+    sources = ("AgentExecutor")
+    metadata["otel_agent_span_allowed"] = list(sources)
     return metadata
 
 
