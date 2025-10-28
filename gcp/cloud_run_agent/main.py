@@ -32,7 +32,15 @@ except ImportError:  # Fallback when running as a script
 load_dotenv()
 
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+# Suppress verbose Azure SDK HTTP logging that floods the console.
+for noisy_logger in (
+    "azure",
+    "azure.core.pipeline.policies.http_logging_policy",
+    "azure.monitor.opentelemetry.exporter.export._base",
+):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
 
 class QueryRequest(BaseModel):
