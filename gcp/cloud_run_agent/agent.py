@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import logging
 import os
@@ -16,12 +17,23 @@ from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
 
+try:  # Optional dependency when exporting to Azure Monitor
+    from azure.monitor.opentelemetry import (
+        configure_azure_monitor as _configure_azure_monitor_impl,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    _configure_azure_monitor_impl = None  # type: ignore
+
 try:  # LangChain >= 1.0.0
     from langchain.agents import create_agent as _create_react_agent  # type: ignore[attr-defined]
 except ImportError:  # pragma: no cover - compatibility with older LangGraph releases
     from langgraph.prebuilt import create_react_agent as _create_react_agent  # type: ignore[assignment]
 
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import SpanKind
 
 logger = logging.getLogger(__name__)
@@ -37,8 +49,109 @@ class AgentConfigurationError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# Azure tracing helpers
+# Telemetry helpers
 # ---------------------------------------------------------------------------
+_AZURE_MONITOR_CONFIGURED = False
+_OTLP_EXPORTER_CONFIGURED = False
+_TRACE_SHUTDOWN_REGISTERED = False
+
+
+def _service_name() -> str:
+    return os.getenv("OTEL_SERVICE_NAME", "gcp-cloud-run-travel-planner")
+
+
+def _configure_azure_monitor_exporter() -> None:
+    """Initialise Azure Monitor exporter if dependencies and configuration are present."""
+    global _AZURE_MONITOR_CONFIGURED
+    if _AZURE_MONITOR_CONFIGURED:
+        return
+
+    connection_string = os.getenv("APPLICATION_INSIGHTS_CONNECTION_STRING")
+    if not connection_string:
+        return
+
+    if _configure_azure_monitor_impl is None:
+        logger.warning(
+            "azure-monitor-opentelemetry is not installed; skipping Azure Monitor exporter setup.",
+        )
+        return
+
+    try:
+        _configure_azure_monitor_impl(connection_string=connection_string)
+    except Exception as exc:  # pragma: no cover - runtime dependency issues
+        logger.warning("Failed to initialise Azure Monitor exporter: %s", exc)
+        return
+
+    _AZURE_MONITOR_CONFIGURED = True
+    logger.info("Azure Monitor exporter configured.")
+
+
+def _configure_otlp_exporter() -> None:
+    """Attach an OTLP span exporter so root spans reach the configured backend."""
+    global _OTLP_EXPORTER_CONFIGURED
+    if _OTLP_EXPORTER_CONFIGURED:
+        return
+
+    try:
+        exporter = OTLPSpanExporter()
+    except Exception as exc:  # pragma: no cover - exporter misconfiguration
+        logger.warning("Unable to initialise OTLP Span Exporter: %s", exc)
+        return
+
+    provider = trace.get_tracer_provider()
+    if not isinstance(provider, TracerProvider):
+        resource = Resource.create({"service.name": _service_name()})
+        provider = TracerProvider(resource=resource)
+        trace.set_tracer_provider(provider)
+
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    _OTLP_EXPORTER_CONFIGURED = True
+    logger.info("OTLP span exporter configured.")
+
+
+def _register_trace_shutdown_handlers() -> None:
+    """Register process shutdown hooks so spans are flushed when the service stops."""
+    global _TRACE_SHUTDOWN_REGISTERED
+    if _TRACE_SHUTDOWN_REGISTERED:
+        return
+
+    def _shutdown_tracing() -> None:
+        provider = trace.get_tracer_provider()
+        flush = getattr(provider, "force_flush", None)
+        if callable(flush):
+            try:
+                flush()
+            except Exception as exc:  # pragma: no cover - diagnostic
+                logger.debug("Tracer provider force_flush failed: %s", exc)
+
+        shutdown = getattr(provider, "shutdown", None)
+        if callable(shutdown):
+            try:
+                shutdown()
+            except Exception as exc:  # pragma: no cover - diagnostic
+                logger.debug("Tracer provider shutdown failed: %s", exc)
+
+    atexit.register(_shutdown_tracing)
+    _TRACE_SHUTDOWN_REGISTERED = True
+
+
+def _flush_tracer_provider() -> None:
+    """Flush spans to configured exporters."""
+    provider = trace.get_tracer_provider()
+    flush = getattr(provider, "force_flush", None)
+    if callable(flush):
+        try:
+            flush()
+        except Exception as exc:  # pragma: no cover - diagnostic
+            logger.debug("Tracer provider force_flush failed: %s", exc)
+
+
+def _configure_tracing_stack() -> None:
+    """Ensure tracing exporters and shutdown handlers are configured exactly once."""
+    _configure_azure_monitor_exporter()
+    _configure_otlp_exporter()
+    _register_trace_shutdown_handlers()
+
 def _str_to_bool(value: str | None, default: bool = True) -> bool:
     if value is None:
         return default
@@ -243,8 +356,20 @@ def _agent_metadata(
         "gen_ai.conversation.id": session_id,
         "gen_ai.request.model": _model_name(),
         "gen_ai.request.temperature": temperature,
+        "gen_ai.request.top_p": 1.0,
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.frequency_penalty": 0.0,
+        "gen_ai.request.presence_penalty": 0.0,
+        "gen_ai.provider.name": "gcp",
         "gen_ai.output.type": "text",
     }
+    server_address, server_port = _resolve_server_attributes()
+    metadata["service.name"] = _service_name()
+    metadata["server.address"] = server_address
+    if server_port is not None:
+        metadata["server.port"] = server_port
+    metadata["otel_agent_span"] = True
+    metadata["otel_agent_span_allowed"] = ["AgentExecutor"]
     return metadata
 
 
@@ -472,16 +597,27 @@ def _root_span_attributes(session_id: str) -> Dict[str, Any]:
         "TRAVEL_PLANNER_AGENT_DESCRIPTION",
         "LangGraph travel planner orchestrating multiple agents",
     )
+    server_address, server_port = _resolve_server_attributes()
+    service_name = _service_name()
     attributes: Dict[str, Any] = {
         "gen_ai.operation.name": "invoke_agent",
         "gen_ai.provider.name": "gcp",
         "gen_ai.request.model": _model_name(),
+        "gen_ai.request.temperature": 0.4,
+        "gen_ai.request.top_p": 1.0,
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.frequency_penalty": 0.0,
+        "gen_ai.request.presence_penalty": 0.0,
         "gen_ai.agent.name": agent_name,
         "gen_ai.agent.id": agent_id,
         "gen_ai.agent.description": agent_description,
         "gen_ai.conversation.id": session_id,
         "gen_ai.output.type": "text",
+        "service.name": service_name,
+        "server.address": server_address,
     }
+    if server_port is not None:
+        attributes["server.port"] = server_port
     return attributes
 
 
@@ -489,6 +625,7 @@ class TravelPlannerAgent:
     """LangGraph wrapper that exposes a synchronous `run` API for travel planning."""
 
     def __init__(self, tracer: Optional[Any] = None):
+        _configure_tracing_stack()
         self._tracer = tracer or configure_azure_tracer()
         self._graph = build_workflow()
 
@@ -576,6 +713,7 @@ class TravelPlannerAgent:
                         ],
                     ),
                 )
+                root_span.set_attribute("gen_ai.response.model", _model_name())
 
                 return final_plan
         except AgentConfigurationError:
@@ -583,3 +721,5 @@ class TravelPlannerAgent:
         except Exception as exc:  # pragma: no cover - runtime errors surfaced to API
             logger.exception("Travel planner invocation failed: %s", exc)
             raise
+        finally:
+            _flush_tracer_provider()
