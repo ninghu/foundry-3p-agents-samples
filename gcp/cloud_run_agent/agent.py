@@ -30,11 +30,6 @@ except ImportError:  # pragma: no cover - compatibility with older LangGraph rel
     from langgraph.prebuilt import create_react_agent as _create_react_agent  # type: ignore[assignment]
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import SpanKind
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +47,6 @@ class AgentConfigurationError(RuntimeError):
 # Telemetry helpers
 # ---------------------------------------------------------------------------
 _AZURE_MONITOR_CONFIGURED = False
-_OTLP_EXPORTER_CONFIGURED = False
 _TRACE_SHUTDOWN_REGISTERED = False
 
 
@@ -84,29 +78,6 @@ def _configure_azure_monitor_exporter() -> None:
 
     _AZURE_MONITOR_CONFIGURED = True
     logger.info("Azure Monitor exporter configured.")
-
-
-def _configure_otlp_exporter() -> None:
-    """Attach an OTLP span exporter so root spans reach the configured backend."""
-    global _OTLP_EXPORTER_CONFIGURED
-    if _OTLP_EXPORTER_CONFIGURED:
-        return
-
-    try:
-        exporter = OTLPSpanExporter()
-    except Exception as exc:  # pragma: no cover - exporter misconfiguration
-        logger.warning("Unable to initialise OTLP Span Exporter: %s", exc)
-        return
-
-    provider = trace.get_tracer_provider()
-    if not isinstance(provider, TracerProvider):
-        resource = Resource.create({"service.name": _service_name()})
-        provider = TracerProvider(resource=resource)
-        trace.set_tracer_provider(provider)
-
-    provider.add_span_processor(BatchSpanProcessor(exporter))
-    _OTLP_EXPORTER_CONFIGURED = True
-    logger.info("OTLP span exporter configured.")
 
 
 def _register_trace_shutdown_handlers() -> None:
@@ -149,7 +120,6 @@ def _flush_tracer_provider() -> None:
 def _configure_tracing_stack() -> None:
     """Ensure tracing exporters and shutdown handlers are configured exactly once."""
     _configure_azure_monitor_exporter()
-    _configure_otlp_exporter()
     _register_trace_shutdown_handlers()
 
 def _str_to_bool(value: str | None, default: bool = True) -> bool:
@@ -563,64 +533,6 @@ def build_workflow() -> Any:
 # ---------------------------------------------------------------------------
 # Execution helpers
 # ---------------------------------------------------------------------------
-def _serialize_messages(messages: Sequence[AnyMessage]) -> List[Dict[str, Any]]:
-    serialised: List[Dict[str, Any]] = []
-    for message in messages:
-        role = "assistant"
-        content = ""
-        if isinstance(message, BaseMessage):
-            role = message.type
-            content = str(message.content)
-        elif isinstance(message, dict):
-            role = str(message.get("role", "assistant"))
-            content = str(message.get("content", ""))
-        else:
-            content = str(message)
-        serialised.append(
-            {
-                "role": role,
-                "parts": [
-                    {
-                        "type": "text",
-                        "content": content,
-                    },
-                ],
-            },
-        )
-    return serialised
-
-
-def _root_span_attributes(session_id: str) -> Dict[str, Any]:
-    agent_name = os.getenv("TRAVEL_PLANNER_AGENT_NAME", "travel_multi_agent_planner")
-    agent_id = os.getenv("TRAVEL_PLANNER_AGENT_ID", "gcp_cloud_run_travel_planner")
-    agent_description = os.getenv(
-        "TRAVEL_PLANNER_AGENT_DESCRIPTION",
-        "LangGraph travel planner orchestrating multiple agents",
-    )
-    server_address, server_port = _resolve_server_attributes()
-    service_name = _service_name()
-    attributes: Dict[str, Any] = {
-        "gen_ai.operation.name": "invoke_agent",
-        "gen_ai.provider.name": "gcp",
-        "gen_ai.request.model": _model_name(),
-        "gen_ai.request.temperature": 0.4,
-        "gen_ai.request.top_p": 1.0,
-        "gen_ai.request.max_tokens": 1024,
-        "gen_ai.request.frequency_penalty": 0.0,
-        "gen_ai.request.presence_penalty": 0.0,
-        "gen_ai.agent.name": agent_name,
-        "gen_ai.agent.id": agent_id,
-        "gen_ai.agent.description": agent_description,
-        "gen_ai.conversation.id": session_id,
-        "gen_ai.output.type": "text",
-        "service.name": service_name,
-        "server.address": server_address,
-    }
-    if server_port is not None:
-        attributes["server.port"] = server_port
-    return attributes
-
-
 class TravelPlannerAgent:
     """LangGraph wrapper that exposes a synchronous `run` API for travel planning."""
 
@@ -667,55 +579,9 @@ class TravelPlannerAgent:
         }
 
         config = self._build_config(session_id, self._tracer)
-        tracer_impl = trace.get_tracer(__name__)
-        root_attributes = _root_span_attributes(session_id)
-        root_input = _serialize_messages(initial_state["messages"])
-
         try:
-            with tracer_impl.start_as_current_span(
-                name="travel_multi_agent_planner.invoke",
-                kind=SpanKind.CLIENT,
-                attributes=root_attributes,
-            ) as root_span:
-                root_span.set_attribute("gen_ai.input.messages", json.dumps(root_input))
-
-                final_state = self._graph.invoke(initial_state, config=config)
-                final_plan = final_state.get("final_itinerary") or ""
-
-                if final_plan:
-                    preview = final_plan[:500]
-                    root_span.set_attribute(
-                        "gen_ai.output.messages",
-                        json.dumps(
-                            [
-                                {
-                                    "role": "assistant",
-                                    "parts": [{"type": "text", "content": preview}],
-                                    "finish_reason": "stop",
-                                },
-                            ],
-                        ),
-                    )
-                    root_span.set_attribute("metadata.final_plan.preview", preview)
-
-                root_span.set_attribute("metadata.session_id", session_id)
-                root_span.set_attribute(
-                    "metadata.agents_used",
-                    len(
-                        [
-                            key
-                            for key in (
-                                "flight_summary",
-                                "hotel_summary",
-                                "activities_summary",
-                            )
-                            if final_state.get(key)
-                        ],
-                    ),
-                )
-                root_span.set_attribute("gen_ai.response.model", _model_name())
-
-                return final_plan
+            final_state = self._graph.invoke(initial_state, config=config)
+            return final_state.get("final_itinerary") or ""
         except AgentConfigurationError:
             raise
         except Exception as exc:  # pragma: no cover - runtime errors surfaced to API
