@@ -6,5 +6,6 @@ langgraph
 requests
 python-dotenv>=1.0.1
 azure-monitor-opentelemetry-exporter==1.0.0b42
-langchain-azure-ai[opentelemetry] @ git+https://github.com/langchain-ai/langchain-azure.git@main#subdirectory=libs/azure-ai
+#langchain-azure-ai[opentelemetry] @ git+https://github.com/langchain-ai/langchain-azure.git@main#subdirectory=libs/azure-ai
+langchain-azure-ai[opentelemetry]@git+https://github.com/nagkumar91/langchain-azure.git@tracer-semconv-alignment#subdirectory=libs/azure-ai
 

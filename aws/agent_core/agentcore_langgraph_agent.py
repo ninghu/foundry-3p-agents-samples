@@ -27,7 +27,6 @@ from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -120,7 +119,7 @@ def _create_graph_executor():
             connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
             enable_content_recording=True,
             name=AGENT_NAME,
-            id=AGENT_ID,
+            agent_id=AGENT_ID,
             provider_name=PROVIDER_NAME,
         )
     graph = _build_langgraph()
