@@ -1,0 +1,7 @@
+python-dotenv>=1.0.1
+langgraph>=1.0.0
+langchain-google-genai>=2.0.10
+azure-monitor-opentelemetry
+azure-monitor-opentelemetry-exporter==1.0.0b42
+langchain-azure-ai[opentelemetry]@git+https://github.com/nagkumar91/langchain-azure.git@tracer-semconv-alignment#subdirectory=libs/azure-ai
+typing-extensions>=4.12.2
