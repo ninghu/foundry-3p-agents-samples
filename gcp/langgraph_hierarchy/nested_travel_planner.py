@@ -45,12 +45,6 @@ except ImportError:  # pragma: no cover
         create_react_agent as _create_react_agent,  # type: ignore[assignment]
     )
 
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import SpanKind
 
 load_dotenv()
 
@@ -170,15 +164,6 @@ def _resolve_server_attributes() -> tuple[str, int]:
     if parsed.port:
         return server_address, parsed.port
     return server_address, 80 if parsed.scheme == "http" else 443
-
-
-def _configure_otlp_tracing() -> None:
-    provider = trace.get_tracer_provider()
-    if not isinstance(provider, TracerProvider):
-        resource = Resource.create({"service.name": _service_name()})
-        provider = TracerProvider(resource=resource)
-        trace.set_tracer_provider(provider)
-    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
 
 def _configure_tracer() -> AzureAIOpenTelemetryTracer | None:
@@ -582,7 +567,6 @@ def main() -> None:
     global TRACER  # noqa: PLW0603 - sample wiring
 
     TRACER = _configure_tracer()
-    _configure_otlp_tracing()
 
     workflow = build_workflow()
     app = workflow.compile()
@@ -598,9 +582,6 @@ def main() -> None:
 
     print("🧭 Nested Agent Travel Planner (GCP)")
     print("=" * 60)
-
-    tracer = trace.get_tracer(__name__)
-    server_address, server_port = _resolve_server_attributes()
 
     for idx, user_request in enumerate(user_requests, start=1):
         session_id = str(uuid4())
@@ -640,72 +621,23 @@ def main() -> None:
         print(user_request)
 
         final_state: Optional[PlannerState] = None
-        root_attributes = {
-            "gen_ai.operation.name": "invoke_agent",
-            "gen_ai.provider.name": _provider_name(),
-            "gen_ai.request.model": _model_name(),
-            "gen_ai.agent.name": "travel_nested_agent_planner",
-            "gen_ai.agent.id": f"travel_nested_agent_planner_{session_id}",
-            "gen_ai.agent.description": "Travel planner demonstrating nested agents",
-            "gen_ai.conversation.id": session_id,
-            "gen_ai.request.temperature": 0.4,
-            "gen_ai.request.top_p": 1.0,
-            "gen_ai.request.max_tokens": 1024,
-            "gen_ai.request.frequency_penalty": 0.0,
-            "gen_ai.request.presence_penalty": 0.0,
-            "gen_ai.output.type": "text",
-            "server.address": server_address,
-            "server.port": server_port,
-            "service.name": _service_name(),
-        }
 
-        with tracer.start_as_current_span(
-            name="invoke_agent travel_nested_agent_planner",
-            kind=SpanKind.CLIENT,
-            attributes=root_attributes,
-        ) as root_span:
-            root_span.set_attribute(
-                "gen_ai.input.messages",
-                json.dumps(
-                    [
-                        {
-                            "role": "user",
-                            "parts": [{"type": "text", "content": user_request}],
-                        }
-                    ]
-                ),
-            )
+        for step in app.stream(initial_state, config=config):
+            node_name, node_state = next(iter(step.items()))
+            final_state = node_state
+            print(f"\n🤖 {node_name.replace('_', ' ').title()} Agent")
+            if node_state.get("messages"):
+                last = node_state["messages"][-1]
+                if isinstance(last, BaseMessage):
+                    preview = last.content
+                    if len(preview) > 400:
+                        preview = preview[:400] + "... [truncated]"
+                    print(preview)
 
-            for step in app.stream(initial_state, config=config):
-                node_name, node_state = next(iter(step.items()))
-                final_state = node_state
-                print(f"\n🤖 {node_name.replace('_', ' ').title()} Agent")
-                if node_state.get("messages"):
-                    last = node_state["messages"][-1]
-                    if isinstance(last, BaseMessage):
-                        preview = last.content
-                        if len(preview) > 400:
-                            preview = preview[:400] + "... [truncated]"
-                        print(preview)
-
-            final_plan = (final_state or {}).get("final_itinerary") or ""
-            if final_plan:
-                print("\n🎉 Final itinerary\n" + "-" * 40)
-                print(final_plan)
-                root_span.set_attribute(
-                    "gen_ai.output.messages",
-                    json.dumps(
-                        [
-                            {
-                                "role": "assistant",
-                                "parts": [{"type": "text", "content": final_plan[:4000]}],
-                                "finish_reason": "stop",
-                            }
-                        ]
-                    ),
-                )
-                preview = final_plan[:500] + ("..." if len(final_plan) > 500 else "")
-                root_span.set_attribute("metadata.final_plan.preview", preview)
+        final_plan = (final_state or {}).get("final_itinerary") or ""
+        if final_plan:
+            print("\n🎉 Final itinerary\n" + "-" * 40)
+            print(final_plan)
 
     provider = trace.get_tracer_provider()
     if hasattr(provider, "force_flush"):
