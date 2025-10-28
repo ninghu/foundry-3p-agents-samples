@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 from azure.monitor.opentelemetry import configure_azure_monitor
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
@@ -41,70 +40,6 @@ load_dotenv()
 
 
 # ---------------------------------------------------------------------------
-# Debug callback handler to inspect LangGraph run tree
-# ---------------------------------------------------------------------------
-
-
-class DebugSpanPrinter(BaseCallbackHandler):
-    """Print every callback event with basic hierarchy information."""
-
-    def _meta(self, **kwargs: Any) -> str:
-        meta = kwargs.get("metadata") or {}
-        agent = meta.get("agent_name") or meta.get("langgraph_node")
-        tool = meta.get("tool_name")
-        parts: List[str] = []
-        if agent:
-            parts.append(f"agent={agent}")
-        if tool:
-            parts.append(f"tool={tool}")
-        return " ".join(parts)
-
-    def _print(self, event: str, **kwargs: Any) -> None:
-        run_id = kwargs.get("run_id")
-        parent_run_id = kwargs.get("parent_run_id")
-        meta = self._meta(**kwargs)
-        print(f"[DEBUG] {event:15s} run={run_id} parent={parent_run_id} {meta}")
-
-    # Chain events ---------------------------------------------------------
-    def on_chain_start(self, serialized, inputs, **kwargs):
-        self._print("on_chain_start", **kwargs)
-
-    def on_chain_end(self, outputs, **kwargs):
-        self._print("on_chain_end", **kwargs)
-
-    def on_chain_error(self, error, **kwargs):
-        self._print("on_chain_error", **kwargs)
-
-    # LLM events -----------------------------------------------------------
-    def on_chat_model_start(self, serialized, messages, **kwargs):
-        self._print("on_chat_model_start", **kwargs)
-
-    def on_llm_end(self, response, **kwargs):
-        self._print("on_llm_end", **kwargs)
-
-    def on_llm_error(self, error, **kwargs):
-        self._print("on_llm_error", **kwargs)
-
-    # Tool events ----------------------------------------------------------
-    def on_tool_start(self, serialized, input_str, **kwargs):
-        self._print("on_tool_start", **kwargs)
-
-    def on_tool_end(self, output, **kwargs):
-        self._print("on_tool_end", **kwargs)
-
-    def on_tool_error(self, error, **kwargs):
-        self._print("on_tool_error", **kwargs)
-
-    # Callback completion --------------------------------------------------
-    def on_callback_end(self, *args, **kwargs):
-        self._print("on_callback_end", **kwargs)
-
-
-# ---------------------------------------------------------------------------
-# Synthetic API tools (stand-ins for real APIs)
-# ---------------------------------------------------------------------------
-
-
 @tool
 def create_calendar_event(
     title: str,
@@ -203,12 +138,10 @@ def _agent_metadata(
 
 
 def _graph_config(session_id: str) -> dict[str, Any]:
-    callbacks = []
-    if CONTEXT:
-        callbacks = [cb for cb in (CONTEXT.tracer, CONTEXT.debug_handler) if cb]
+    tracer = CONTEXT.tracer if CONTEXT else None
     config: dict[str, Any] = {"configurable": {"thread_id": session_id}}
-    if callbacks:
-        config["callbacks"] = callbacks
+    if tracer:
+        config["callbacks"] = [tracer]
     return config
 
 
@@ -223,7 +156,6 @@ OptionalTracer = Optional[AzureAIOpenTelemetryTracer]
 @dataclass
 class AgentContext:
     tracer: OptionalTracer
-    debug_handler: Optional[BaseCallbackHandler]
     model_name: str
 
 
@@ -317,9 +249,8 @@ def grandchild_agent_node(
         agent_description="Note refinement agent",
     )
     config = {"metadata": metadata}
-    callbacks = [cb for cb in (ctx.tracer, ctx.debug_handler) if cb]
-    if callbacks:
-        config["callbacks"] = callbacks
+    if ctx.tracer:
+        config["callbacks"] = [ctx.tracer]
     result = note_agent.invoke({"messages": list(state["micro_conversation"])}, config=config)
     return {"micro_conversation": result["messages"]}
 
@@ -361,9 +292,8 @@ def child_calendar_node(
         agent_description="Calendar scheduling sub-agent",
     )
     config = {"metadata": metadata}
-    callbacks = [cb for cb in (ctx.tracer, ctx.debug_handler) if cb]
-    if callbacks:
-        config["callbacks"] = callbacks
+    if ctx.tracer:
+        config["callbacks"] = [ctx.tracer]
 
     prompt = f"Please schedule this request: {state['schedule_request']}"
     result = calendar_agent.invoke({"messages": [HumanMessage(content=prompt)]}, config=config)
@@ -455,9 +385,8 @@ def manage_email(request: str) -> str:
         agent_description="Email composition agent",
     )
     config: Dict[str, Any] = {"metadata": metadata}
-    callbacks = [cb for cb in (CONTEXT.tracer, CONTEXT.debug_handler) if cb]
-    if callbacks:
-        config["callbacks"] = callbacks
+    if CONTEXT and CONTEXT.tracer:
+        config["callbacks"] = [CONTEXT.tracer]
     result = AGENTS["email_agent"].invoke(
         {"messages": [HumanMessage(content=request)]},
         config=config,
@@ -486,9 +415,8 @@ def supervisor_node(state: ParentState) -> ParentState:
         agent_description="Supervisor agent coordinating tasks",
     )
     config: Dict[str, Any] = {"metadata": metadata}
-    callbacks = [cb for cb in (CONTEXT.tracer, CONTEXT.debug_handler) if cb]
-    if callbacks:
-        config["callbacks"] = callbacks
+    if CONTEXT and CONTEXT.tracer:
+        config["callbacks"] = [CONTEXT.tracer]
     result = AGENTS["supervisor_agent"].invoke({"messages": list(state["messages"])}, config=config)
     return {"messages": result["messages"]}
 
@@ -528,13 +456,10 @@ def main() -> None:
     global CONTEXT, AGENTS, CHILD_GRAPH
 
     tracer = _configure_tracing()
-    debug_handler = DebugSpanPrinter()
     CONTEXT = AgentContext(
         tracer=tracer,
-        debug_handler=debug_handler,
         model_name=_model_name(),
     )
-
     AGENTS = _build_agents(CONTEXT)
     AGENTS["supervisor_agent"] = create_agent(
         _build_chat_model(temperature=0.2),
