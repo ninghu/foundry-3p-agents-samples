@@ -15,6 +15,7 @@ from uuid import uuid4
 from urllib.parse import urlparse
 
 from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry import trace
 from dotenv import load_dotenv
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
