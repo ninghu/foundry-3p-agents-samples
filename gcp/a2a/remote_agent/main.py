@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from urllib.parse import parse_qs
 
 import click
 import httpx
@@ -14,6 +15,8 @@ from a2a.server.tasks import (
 )
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from dotenv import load_dotenv
+from starlette.datastructures import Headers
+from starlette.responses import JSONResponse
 
 if __package__ is None or __package__ == '':
     from agent import CurrencyAgent  # type: ignore
@@ -31,6 +34,53 @@ logger = logging.getLogger(__name__)
 
 class MissingAPIKeyError(Exception):
     """Raised when the required API configuration is missing."""
+
+
+class APIKeyGuard:
+    """ASGI wrapper enforcing an API key on inbound HTTP requests."""
+
+    def __init__(
+        self,
+        app,
+        expected_key: str,
+        allowed_paths: tuple[str, ...] | None = None,
+    ) -> None:
+        self._app = app
+        self._expected_key = expected_key
+        self._allowed_paths = set(allowed_paths or ())
+
+    async def __call__(self, scope, receive, send):
+        if scope.get('type') != 'http' or not self._expected_key:
+            await self._app(scope, receive, send)
+            return
+
+        path = scope.get('path', '')
+        if path in self._allowed_paths:
+            await self._app(scope, receive, send)
+            return
+
+        headers = Headers(scope=scope)
+        provided_key = headers.get('api-key')
+        if not provided_key:
+            raw_query = scope.get('query_string', b'')
+            if raw_query:
+                query_params = parse_qs(raw_query.decode('utf-8'))
+                provided_key = query_params.get('api_key', [None])[0]
+
+        if provided_key != self._expected_key:
+            response = JSONResponse(
+                {'detail': 'Unauthorized. Supply the correct API key via the api-key header or api_key query parameter.'},
+                status_code=401,
+            )
+            await response(scope, receive, send)
+            return
+
+        await self._app(scope, receive, send)
+
+
+def _load_agent_api_key() -> str:
+    """Return the configured API key used to guard incoming requests."""
+    return os.getenv('A2A_AGENT_API_KEY', 'gcpa2aagentkey')
 
 
 def _build_public_base_url(bind_host: str, port: int) -> str:
@@ -98,7 +148,15 @@ def main(host: str | None, port: int | None) -> None:
             http_handler=request_handler,
         )
 
-        uvicorn.run(server.build(), host=effective_host, port=effective_port)
+        app = server.build()
+
+        api_key = _load_agent_api_key().strip()
+        if api_key:
+            allowed_paths: tuple[str, ...] = ('/healthz', '/', '/_ah/health')
+            app = APIKeyGuard(app, expected_key=api_key, allowed_paths=allowed_paths)
+            logger.info('API key protection enabled for the remote agent.')
+
+        uvicorn.run(app, host=effective_host, port=effective_port)
 
     except MissingAPIKeyError as exc:
         logger.error('Error: %s', exc)

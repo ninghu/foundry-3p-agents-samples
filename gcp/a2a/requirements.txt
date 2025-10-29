@@ -4,5 +4,5 @@
 -r remote_agent/requirements.txt
 
 # Evaluation tooling for agent_eval.py.
-azure-ai-evaluation>=1.11.2
+azure-ai-evaluation
 azure-identity>=1.17.0

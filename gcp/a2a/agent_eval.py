@@ -26,13 +26,15 @@ from azure.ai.evaluation import (
     TaskAdherenceEvaluator,
     evaluate,
 )
+from azure.identity import CredentialUnavailableError, DefaultAzureCredential
 from dotenv import load_dotenv
 
-AZURE_AI_PROJECT_ENDPOINT = (
-    'https://ninhu-ai-swedencentral.services.ai.azure.com/api/projects/firstProject'
-)
 DATASET_FILE = Path(__file__).with_name('dataset.jsonl')
 REQUEST_TIMEOUT_SECONDS = 120.0
+CONNECTION_RESOURCE_TEMPLATE = (
+    'connections/{connection_name}/getConnectionWithCredentials?api-version=v1'
+)
+AZURE_AI_SCOPE = 'https://ai.azure.com/.default'
 
 logger = logging.getLogger(__name__)
 
@@ -150,10 +152,39 @@ def _default_json_encoder(obj: Any) -> Any:
     return str(obj)
 
 
-async def _call_remote_agent(base_url: str, prompt: str) -> str:
+_default_credential: DefaultAzureCredential | None = None
+
+
+def _get_ai_access_token() -> str:
+    """Acquire an access token for Azure AI Foundry APIs."""
+
+    global _default_credential
+    if _default_credential is None:
+        # Lazily construct the credential so CLI/MSI auth works if available.
+        _default_credential = DefaultAzureCredential(
+            exclude_interactive_browser_credential=True
+        )
+
+    try:
+        access_token = _default_credential.get_token(AZURE_AI_SCOPE)
+    except CredentialUnavailableError as exc:
+        raise AgentEvaluationError(
+            'Azure credentials are unavailable. Set AZURE_AI_FOUNDRY_TOKEN or '
+            'configure a supported Azure identity to authenticate with ai.azure.com.'
+        ) from exc
+    except Exception as exc:
+        raise AgentEvaluationError(
+            f'Failed to acquire Azure AI Foundry access token: {exc}'
+        ) from exc
+
+    return access_token.token
+
+
+async def _call_remote_agent(base_url: str, prompt: str, api_key: str | None) -> str:
     """Send a single prompt to the remote agent and return its response text."""
     timeout = httpx.Timeout(timeout=REQUEST_TIMEOUT_SECONDS)
-    async with httpx.AsyncClient(timeout=timeout) as httpx_client:
+    default_headers = {'api-key': api_key} if api_key else None
+    async with httpx.AsyncClient(timeout=timeout, headers=default_headers) as httpx_client:
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=base_url)
         agent_card = await resolver.get_agent_card()
         client = A2AClient(httpx_client=httpx_client, agent_card=agent_card)
@@ -169,15 +200,19 @@ async def _call_remote_agent(base_url: str, prompt: str) -> str:
             id=str(uuid4()),
             params=MessageSendParams(**payload),
         )
-        response = await client.send_message(request)
+        try:
+            response = await client.send_message(request)
+        except httpx.HTTPError as exc:
+            logger.error('Error occurred while sending message: %s', exc)
+            return 'Error occurred while sending message.'
         return extract_text_response(response)
 
 
-def invoke_remote_agent(base_url: str, prompt: str) -> str:
+def invoke_remote_agent(base_url: str, prompt: str, api_key: str | None) -> str:
     """Synchronously invoke the async remote agent helper."""
 
     async def _runner() -> str:
-        return await _call_remote_agent(base_url, prompt)
+        return await _call_remote_agent(base_url, prompt, api_key)
 
     try:
         return asyncio.run(_runner())
@@ -193,6 +228,53 @@ def invoke_remote_agent(base_url: str, prompt: str) -> str:
         raise
 
 
+def _fetch_connection_credentials(
+    project_endpoint: str, connection_name: str
+) -> tuple[str, str]:
+    """Retrieve the remote agent URL and API key from Azure AI Foundry."""
+    logger.info('Fetching connection configuration for "%s".', connection_name)
+    normalized_endpoint = project_endpoint.rstrip('/')
+    connection_path = CONNECTION_RESOURCE_TEMPLATE.format(
+        connection_name=connection_name
+    )
+    connection_url = f'{normalized_endpoint}/{connection_path}'
+    access_token = _get_ai_access_token()
+    try:
+        response = httpx.post(
+            connection_url,
+            json={'name': connection_name},
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise AgentEvaluationError(
+            f'Unable to retrieve connection "{connection_name}": {exc}'
+        ) from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise AgentEvaluationError(
+            'Connection service returned invalid JSON payload.'
+        ) from exc
+
+    base_url = payload.get('target')
+    credentials = payload.get('credentials') or {}
+    api_key = credentials.get('api-key')
+
+    if not base_url:
+        raise AgentEvaluationError(
+            'Connection payload does not include the remote agent URL.'
+        )
+    if not api_key:
+        raise AgentEvaluationError(
+            'Connection payload does not include the remote agent API key.'
+        )
+
+    return base_url, api_key
+
+
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s'
@@ -200,9 +282,12 @@ def main() -> int:
 
     load_dotenv(Path(__file__).with_name('.env'))
 
-    base_url = os.getenv('REMOTE_AGENT_URL')
-    if not base_url:
-        raise AgentEvaluationError('REMOTE_AGENT_URL environment variable is required.')
+    project_endpoint = os.getenv('AZURE_AI_PROJECT_ENDPOINT')
+    if not project_endpoint:
+        raise AgentEvaluationError('AZURE_AI_PROJECT_ENDPOINT environment variable is required.')
+
+    a2a_connection_name = "gcpa2a"
+    base_url, api_key = _fetch_connection_credentials(project_endpoint, a2a_connection_name)
 
     if not DATASET_FILE.exists():
         raise AgentEvaluationError(f'Dataset file not found: {DATASET_FILE}')
@@ -213,7 +298,7 @@ def main() -> int:
         if not isinstance(query, str) or not query.strip():
             raise AgentEvaluationError('Each dataset row must include a non-empty "query" field.')
         logger.info('Querying agent with prompt: %s', query)
-        response_text = invoke_remote_agent(base_url, query.strip())
+        response_text = invoke_remote_agent(base_url, query.strip(), api_key)
         logger.info('Received response: %s', response_text)
         return {'response': response_text}
 
@@ -235,7 +320,7 @@ def main() -> int:
         target=target,
         evaluators=evaluators,
         evaluator_config=evaluator_config,
-        azure_ai_project=AZURE_AI_PROJECT_ENDPOINT,
+        azure_ai_project=project_endpoint,
     )
 
     pprint(result)
