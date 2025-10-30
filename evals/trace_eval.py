@@ -3,7 +3,7 @@ Script to query Application Insights for trace IDs based on agent ID and time ra
 """
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pprint import pprint
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
@@ -82,9 +82,9 @@ def main():
     # This is the agent id when you set up the azure tracer
     agent_id = "gcp-cloud-run-agent"
     
-    # Parse datetime strings
-    start_time = datetime.fromisoformat("2025-10-28 14:00:00")
-    end_time = datetime.fromisoformat("2025-10-28 19:00:00")
+    # Use the most recent hour for trace analysis
+    end_time = datetime.now(tz=timezone.utc)
+    start_time = end_time - timedelta(hours=1)
     
     print(f"Querying Application Insights...")
     print(f"Agent ID: {agent_id}")
