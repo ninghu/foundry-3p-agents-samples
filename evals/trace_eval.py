@@ -5,6 +5,8 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 from pprint import pprint
+from typing import Any
+
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
@@ -12,6 +14,23 @@ from azure.ai.projects import AIProjectClient
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+def _build_evaluator_config(name: str, evaluator_name: str) -> dict[str, Any]:
+    """Create a standard Azure AI evaluator configuration block."""
+    return {
+        "type": "azure_ai_evaluator",
+        "name": name,
+        "evaluator_name": evaluator_name,
+        "data_mapping": {
+            "query": "{{query}}",
+            "response": "{{response}}",
+            "tool_definitions": "{{tool_definitions}}",
+        },
+        "initialization_parameters": {
+            "deployment_name": "ninhuaiswedencentral/gpt-35-turbo",
+        },
+    }
 
 
 def get_trace_ids(appinsight_resource_id: str, agent_id: str, start_time: datetime, end_time: datetime) -> list[str]:
@@ -106,18 +125,14 @@ def main():
             }
             
             testing_criteria = [
-                {
-                    "type": "azure_ai_evaluator",
-                    "name": "violence",
-                    "evaluator_name": "builtin.violence",
-                    "data_mapping": {
-                        "query": "{{query}}",
-                        "response": "{{response}}"
-                    },
-                    "initialization_parameters": {
-                        "deployment_name": "{{aoai_deployment_and_model}}"
-                    }
-                }
+                _build_evaluator_config(
+                    name="intent_resolution",
+                    evaluator_name="builtin.intent_resolution",
+                ),
+                _build_evaluator_config(
+                    name="task_adherence",
+                    evaluator_name="builtin.task_adherence",
+                ),
             ]
             
             print("Creating Eval Group")
@@ -157,7 +172,7 @@ def main():
                 run = client.evals.runs.retrieve(run_id=eval_run_object.id, eval_id=eval_object.id)
                 print(f"Status: {run.status}")
                 
-                if run.status == "completed" or run.status == "failed":
+                if run.status == "completed" or run.status == "failed" or run.status == "canceled":
                     print("\nEval Run finished!")
                     print("Final Eval Run Response:")
                     pprint(run)
