@@ -8,4 +8,4 @@ typing-extensions>=4.12.2
 uvicorn[standard]>=0.34.0
 azure-monitor-opentelemetry-exporter==1.0.0b42
 azure-monitor-opentelemetry
-langchain-azure-ai[opentelemetry]==1.0.2
+langchain-azure-ai[opentelemetry]
