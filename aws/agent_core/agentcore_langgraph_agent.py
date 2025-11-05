@@ -84,7 +84,7 @@ def _build_langgraph():
     graph_builder.add_edge("tools", "assistant")
     graph_builder.add_edge(START, "assistant")
 
-    return graph_builder.compile()
+    return graph_builder.compile(name="aws currency exchange agent")
 
 
 def _last_message_content(messages: List[Any]) -> str:

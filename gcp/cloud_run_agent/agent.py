@@ -537,7 +537,7 @@ class TravelPlannerAgent:
         self._tracer = tracer if tracer is not None else _configure_tracer()
         TRACER = self._tracer
         self._workflow = build_workflow()
-        self._graph = self._workflow.compile(name="Billy's travel planner agent")
+        self._graph = self._workflow.compile(name="gcp travel planner agent")
 
     def _build_config(self, session_id: str) -> Dict[str, Any]:
         config: Dict[str, Any] = {
