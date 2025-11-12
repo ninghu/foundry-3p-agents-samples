@@ -1,97 +1,97 @@
 # Remote LangGraph Currency Agent
 
-This folder contains a LangGraph-based A2A agent derived from the upstream [a2a-samples](https://github.com/a2aproject/a2a-samples/tree/main/samples/python/agents/langgraph) project. The agent exposes a currency conversion tool that relies on LangGraph, LangChain, and the A2A server runtime.
+Remote A2A agent that wraps a LangGraph-powered currency assistant. The agent uses Gemini (`langchain_google_genai`) by default, exposes the A2A protocol via Starlette, protects endpoints with an API-key guard, and ships with Docker + Cloud Run deployment helpers.
 
 ## Prerequisites
+- Python 3.12+ for local development
+- Google Gemini API key **or** an OpenAI-compatible endpoint
+- `gcloud` CLI + Google Cloud project (for Cloud Run builds)
+- Docker (for local container runs)
+- `.env` generated from `.env.example`
 
-- Python 3.12 (for local runs)
-- An API key for the backing LLM
-  - `GOOGLE_API_KEY` for Gemini (default)
-  - or `TOOL_LLM_URL`, `TOOL_LLM_NAME`, and `API_KEY` for an OpenAI-compatible endpoint
-- Docker & gcloud CLIs (for Cloud Run)
-- A configured GCP project with Cloud Run enabled
-- A `gcp/a2a/remote_agent/.env` file (copy the adjacent `.env.example` and fill in the required values)
-- Optional: a `gcp/a2a/.env` file for evaluator scripts (copy from `gcp/a2a/.env.example`)
+Optional:
+- `gcp/a2a/.env` for the evaluation script (`a2a_agent_eval.py`)
 
-## Local Development
+## Configuration overview
+`main.py` and `agent.py` read the following environment variables:
 
+| Variable | Purpose |
+| --- | --- |
+| `model_source` | Set to `google` (default) to use Gemini or any other string to switch to an OpenAI-style endpoint. |
+| `GOOGLE_API_KEY`, `GOOGLE_MODEL_NAME` | Required when `model_source=google`. |
+| `TOOL_LLM_URL`, `TOOL_LLM_NAME`, `API_KEY` | Required when using the OpenAI-style path. |
+| `A2A_AGENT_API_KEY` | Guards every request except `/`, `/healthz`, and `/_ah/health`. Provide via header `api-key` or query `api_key`. |
+| `PUBLIC_HOST` / `PUBLIC_PORT` / `PUBLIC_SCHEME` | Controls the URLs advertised in the A2A agent card (defaults to whatever host:port the server binds to). |
+| `BIND_HOST`, `HOST`, `PORT` | Override the server bind address when running locally or in containers. Cloud Run injects `PORT` automatically. |
+| `GCP_PROJECT_ID`, `GCP_REGION` | Consumed by `deploy.py` to figure out build/deploy targets. |
+
+See `.env.example` for a ready-to-copy template.
+
+## Local development
 ```bash
 cp gcp/a2a/remote_agent/.env.example gcp/a2a/remote_agent/.env
-# optionally configure evaluation helpers
-# cp gcp/a2a/.env.example gcp/a2a/.env
+# optional: cp gcp/a2a/.env.example gcp/a2a/.env
 
 cd gcp/a2a/remote_agent
 python -m venv .venv
-source .venv/bin/activate  # on Windows use .venv\Scripts\Activate.ps1
-pip install --upgrade pip
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 python -m remote_agent --host 127.0.0.1 --port 8080
 ```
-
-The server responds on `http://localhost:8080` and exposes the A2A protocol endpoints.
-All requests must include the API key either via an `api-key` header or an `api_key` query parameter. For example:
+The service responds to standard A2A endpoints (e.g. `/.well-known/a2a-agent-card`, `/invoke`, `/healthz`). Remember to supply the API key:
 ```bash
 curl -H "api-key: ${A2A_AGENT_API_KEY}" http://localhost:8080/.well-known/a2a-agent-card
 ```
 
-### Run with Docker locally
-
+## Run with Docker locally
 ```bash
 cd gcp/a2a/remote_agent
 docker build -t currency-agent .
 docker run --rm -p 8080:8080 --env-file .env currency-agent
 ```
 
-## Build & Deploy to Cloud Run
-
+## Build & deploy to Cloud Run
 ```bash
-# Configure project/region if not already set
-gcloud config set project YOUR_PROJECT_ID
-gcloud config set run/region YOUR_REGION
-
 cd gcp/a2a/remote_agent
 
 SERVICE_NAME=currency-agent
-IMAGE=YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/agents/${SERVICE_NAME}:$(date +%Y%m%d%H%M)
+REGION=us-central1
+PROJECT_ID=$(gcloud config get-value project)
+IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/agents/${SERVICE_NAME}:$(date +%Y%m%d%H%M%S)"
 
-gcloud builds submit --tag "${IMAGE}"
-
+gcloud builds submit . --tag "${IMAGE}"
 gcloud run deploy "${SERVICE_NAME}" \
   --image "${IMAGE}" \
+  --region "${REGION}" \
   --platform managed \
   --allow-unauthenticated \
   --set-env-vars "$(tr '\n' ',' < .env | sed 's/,$//')"
 ```
+Drop `--allow-unauthenticated` if you want to front the service with IAP or require Cloud Run IAM. Cloud Run supplies the `PORT` variable automatically, so no code changes are needed.
 
-Cloud Run automatically injects the `PORT` environment variable; the entrypoint reads it and listens on the correct port. If you need private access, remove `--allow-unauthenticated` and configure ingress/IAP as required.
-
-### Using the helper deploy script
-
-This directory also includes a cross-platform helper (`deploy.py`) that wraps Cloud Build and Cloud Run commands. The script reads configuration from `.env`, so populate `GCP_PROJECT_ID` and `GCP_REGION` alongside your other environment variables.
-
+### Helper deploy script
+`deploy.py` automates the Cloud Build + Cloud Run flow and reuses `.env` for configuration:
 ```powershell
 cd gcp\a2a\remote_agent
-python deploy.py --env-file .\.env
+python deploy.py --env-file .\.env --service-name currency-agent --repo-name agents
 ```
+Flags of note:
+- `--image-tag` to pin a tag instead of the default timestamp.
+- `--allow-unauthenticated` to expose the service publicly.
+- `--extra-env KEY=VALUE,...` to append secrets that you do not want to keep in `.env`.
 
-Optional arguments:
+## Testing & evaluation
+- Use `a2a-sdk` to drive the deployed agent:
+  ```python
+  from a2a.sdk import A2AClient
+  client = A2AClient(base_url="https://<your-cloud-run-url>", api_key="<A2A_AGENT_API_KEY>")
+  response = client.chat("What is the USD to EUR rate today?")
+  print(response)
+  ```
+- `gcp/a2a/a2a_agent_eval.py` demonstrates how to call the agent via an Azure AI connection, capture responses, and score them with the Task Adherence and Intent Resolution evaluators.
 
-- `--service-name` (default `currency-agent`)
-- `--repo-name` (Artifact Registry repo, default `agents`)
-- `--image-tag` (defaults to UTC timestamp)
-- `--extra-env` (comma-separated key/value pairs appended to Cloud Run env vars)
-
-## Testing the Agent
-
-You can exercise the deployed agent using the `a2a-sdk`:
-
-```python
-from a2a.sdk import A2AClient
-
-client = A2AClient(base_url="https://<your-cloud-run-url>")
-response = client.chat("What is the USD to EUR rate today?")
-print(response)
-```
-
-This same client is used in `gcp/a2a/agent_eval.py` to drive evaluation runs. Refer to that script for Azure AI Evaluation integration.
+## Next steps
+- Swap in a different toolset by editing `CurrencyAgent` (e.g., add FX hedging tips or pricing history).
+- Persist the LangGraph checkpoint somewhere durable by replacing the in-memory `MemorySaver`.
+- When publishing publicly, rotate `A2A_AGENT_API_KEY` regularly and consider adding rate limiting in front of the service.

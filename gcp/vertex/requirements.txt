@@ -1,11 +1,11 @@
 azure-monitor-opentelemetry-exporter==1.0.0b42
-azure-monitor-opentelemetry
 langchain-azure-ai[opentelemetry]
 langchain_google_vertexai
 wrapt==1.17.3
 google-cloud-aiplatform[agent_engines]
-langchain
+langchain>=0.3.0,<1.0.0
 python-dotenv>=1.0.1
 cloudpickle
 pydantic==2.12.3
 pydantic-core==2.41.4
+requests>=2.32.0

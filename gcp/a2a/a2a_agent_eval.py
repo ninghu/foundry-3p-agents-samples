@@ -205,6 +205,7 @@ async def _call_remote_agent(base_url: str, prompt: str, api_key: str | None) ->
         except httpx.HTTPError as exc:
             logger.error('Error occurred while sending message: %s', exc)
             return 'Error occurred while sending message.'
+        
         return extract_text_response(response)
 
 
@@ -275,6 +276,34 @@ def _fetch_connection_credentials(
     return base_url, api_key
 
 
+def _create_dataset_with_agent_id(
+    source_dataset: Path, agent_id: str
+) -> Path:
+    """Create a temporary dataset file with agent_id column injected.
+    
+    Args:
+        source_dataset: Path to the original dataset file
+        agent_id: The agent identifier to inject into each row
+        
+    Returns:
+        Path to the temporary dataset file with agent_id column
+    """
+    temp_dataset_file = source_dataset.with_name('dataset_with_agent_id.jsonl')
+    logger.info('Creating temporary dataset with agent_id column at: %s', temp_dataset_file)
+    
+    with open(source_dataset, 'r', encoding='utf-8') as source_file:
+        with open(temp_dataset_file, 'w', encoding='utf-8') as temp_file:
+            for line in source_file:
+                line = line.strip()
+                if line:
+                    data = json.loads(line)
+                    data['agent_id'] = agent_id
+                    temp_file.write(json.dumps(data) + '\n')
+    
+    logger.info('Temporary dataset created successfully.')
+    return temp_dataset_file
+
+
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s'
@@ -286,14 +315,17 @@ def main() -> int:
     if not project_endpoint:
         raise AgentEvaluationError('AZURE_AI_PROJECT_ENDPOINT environment variable is required.')
 
-    a2a_connection_name = "gcpa2a"
-    base_url, api_key = _fetch_connection_credentials(project_endpoint, a2a_connection_name)
+    # Step 1: Fetch the a2a connection
+    agent_id = "gcpa2a"
+    base_url, api_key = _fetch_connection_credentials(project_endpoint, agent_id)
 
     if not DATASET_FILE.exists():
         raise AgentEvaluationError(f'Dataset file not found: {DATASET_FILE}')
 
+    # Create temporary dataset with agent_id column
     model_config = load_model_config()
 
+    # Step 2: Define the target function for invoking the remote agent
     def target(query: str) -> dict[str, str]:
         if not isinstance(query, str) or not query.strip():
             raise AgentEvaluationError('Each dataset row must include a non-empty "query" field.')
@@ -302,6 +334,7 @@ def main() -> int:
         logger.info('Received response: %s', response_text)
         return {'response': response_text}
 
+    # Step 3: Run the evaluation
     evaluators = {
         'task_adherence': TaskAdherenceEvaluator(model_config=model_config),
         'intent_resolution': IntentResolutionEvaluator(model_config=model_config),
@@ -315,8 +348,9 @@ def main() -> int:
         }
     }
 
+    dataset_path = _create_dataset_with_agent_id(DATASET_FILE, agent_id)
     result = evaluate(
-        data=str(DATASET_FILE),
+        data=str(dataset_path),
         target=target,
         evaluators=evaluators,
         evaluator_config=evaluator_config,
@@ -324,6 +358,11 @@ def main() -> int:
     )
 
     pprint(result)
+    
+    # Clean up temporary dataset file
+    if dataset_path.exists():
+        dataset_path.unlink()
+        logger.info('Temporary dataset file deleted.')
 
 
 if __name__ == '__main__':

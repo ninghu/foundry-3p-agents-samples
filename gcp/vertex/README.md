@@ -1,43 +1,49 @@
 # Vertex AI LangChain Agent
 
-Compact sample that runs a LangChain agent on Vertex AI Agent Engines and forwards traces to Azure Application Insights. Configuration is driven by environment variables loaded from a `.env` file.
+This sample builds a LangChain `LangchainAgent` with a currency-exchange tool, runs it locally, and (optionally) deploys it to Vertex AI Agent Engines. Azure Application Insights spans are emitted automatically when the optional `langchain-azure-ai` dependency and connection string are present.
 
-## Quick start
-1. Copy the sample environment file and edit the placeholders:
+## Prerequisites
+- Python 3.12+
+- Google Cloud project with Vertex AI Agent Engines enabled
+- `gcloud` CLI authenticated with Application Default Credentials (`gcloud auth application-default login`)
+- Optional: Azure Application Insights resource for tracing
+
+## Setup
+1. Copy the provided environment template:
    ```bash
    cd gcp/vertex
    cp .env.example .env
    ```
-   Required values:
-   - `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_REGION` for the target Vertex AI project.
-   - `VERTEX_STAGING_BUCKET` (e.g., `gs://your-bucket`) when packaging for remote deployment.
-   - Optional: `APPLICATION_INSIGHTS_CONNECTION_STRING` to enable Azure tracing, plus `VERTEX_AGENT_*` overrides for metadata.
-
-2. Install dependencies (from the repo root or a virtual environment):
+2. Fill in the environment variables that the script reads (see `.env.example` for defaults):
+   - `GOOGLE_CLOUD_PROJECT` (required) and `GOOGLE_CLOUD_REGION` (defaults to `us-central1`)
+   - `VERTEX_MODEL_NAME` (defaults to `gemini-2.0-flash`)
+   - `VERTEX_STAGING_BUCKET` and `VERTEX_GCS_DIR_NAME` for remote deployment
+   - Optional Azure options: `APPLICATION_INSIGHTS_CONNECTION_STRING`, `VERTEX_AGENT_NAME`, `VERTEX_AGENT_ID`, `VERTEX_PROVIDER_NAME`
+3. Install dependencies:
    ```bash
    pip install -r gcp/vertex/requirements.txt
    ```
 
-3. Authenticate with Google Cloud so the SDK can use Application Default Credentials:
-   ```bash
-   gcloud auth application-default login
-   ```
+## Running locally
+Execute the script directly:
+```bash
+python gcp/vertex/vertex_langchain_agent.py
+```
+It performs the following steps:
+1. Loads `.env`, validates `GOOGLE_CLOUD_PROJECT`, and initialises `vertexai`.
+2. Builds a `LangchainAgent` with a single `get_exchange_rate` tool backed by the public Frankfurter API.
+3. Wraps the runnable in `AzureAIOpenTelemetryTracer` when `APPLICATION_INSIGHTS_CONNECTION_STRING` is set.
+4. Issues a sample query (“What is the exchange rate from US dollars to SEK today?”) and prints the response.
 
-4. Run the agent locally:
-   ```bash
-   python gcp/vertex/vertex_langchain_agent.py
-   ```
-   The script creates a local `LangchainAgent`, queries it once, and (optionally) deploys it if you keep the deployment call enabled.
+## Deploying to Agent Engines
+- Set `VERTEX_STAGING_BUCKET=gs://...` in `.env`. If this variable is unset, deployment is skipped.
+- Re-run the script. The `deploy_agent` helper packages the local agent (including `requirements.txt`) and calls `vertexai.Client().agent_engines.create`.
+- Deployment metadata such as `VERTEX_AGENT_NAME` and `VERTEX_GCS_DIR_NAME` are read directly from the environment, so no code edits are needed.
 
-## Deploying to Vertex AI Agent Engines
-1. Ensure `VERTEX_STAGING_BUCKET` references a writable GCS bucket in the same project/region.
-2. Ensure `VERTEX_STAGING_BUCKET` is set; if it’s absent the script runs locally and skips deployment.
-3. Run the script again (the `deploy_agent` call is kept in the `__main__` block). Deployment uses the values from `.env` for naming and staging.
+## Telemetry
+- `AzureAIOpenTelemetryTracer` comes from `langchain-azure-ai`. If the package or `APPLICATION_INSIGHTS_CONNECTION_STRING` is missing, the script logs that tracing is disabled and continues.
+- Customize `VERTEX_AGENT_NAME`, `VERTEX_AGENT_ID`, and `VERTEX_PROVIDER_NAME` to control how spans are labeled in Application Insights.
 
-## Tracing
-- Telemetry is emitted via `AzureAIOpenTelemetryTracer` when `APPLICATION_INSIGHTS_CONNECTION_STRING` is set. If it’s missing or the optional dependency is not installed, the agent continues without tracing.
-- Adjust `VERTEX_AGENT_NAME`, `VERTEX_AGENT_ID`, and `VERTEX_PROVIDER_NAME` to control how traces appear in Application Insights.
-
-## Authentication highlights
-- Local runs and deployments rely on Application Default Credentials (`gcloud auth application-default login`). In managed environments, configure a service account with Vertex AI Agent Engines permissions.
-- Keep sensitive values (Azure connection strings, staging bucket names) in `.env` or a secret manager; never hard-code them in source files.
+## Tips
+- Keep `.env` out of source control; store production credentials in Secret Manager or another vault.
+- When running in CI or a managed environment, provide the same variables via the runtime environment instead of relying on `.env`.
