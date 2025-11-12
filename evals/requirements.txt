@@ -1,4 +1,4 @@
 azure-identity>=1.15.0
 azure-monitor-query>=1.2.0
 python-dotenv>=1.0.1
-git+https://github.com/Azure/azure-sdk-for-python-pr.git@feature/azure-ai-projects/2.0.0b1#subdirectory=sdk/ai/azure-ai-projects
+azure-ai-projects==2.0.0b1
