@@ -16,7 +16,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-COPY . ./remote_agent
+COPY . ./a2a_agent
 
 # Ensure the package is importable when running as a module
 ENV PYTHONPATH=/srv
@@ -26,4 +26,4 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["python", "-m", "remote_agent"]
+CMD ["python", "-m", "a2a_agent"]

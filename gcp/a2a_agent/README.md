@@ -10,7 +10,7 @@ Remote A2A agent that wraps a LangGraph-powered currency assistant. The agent us
 - `.env` generated from `.env.example`
 
 Optional:
-- `gcp/a2a/.env` for the evaluation script (`a2a_agent_eval.py`)
+- `evals/a2a/.env` for the evaluation script (`a2a_agent_eval.py`)
 
 ## Configuration overview
 `main.py` and `agent.py` read the following environment variables:
@@ -29,15 +29,15 @@ See `.env.example` for a ready-to-copy template.
 
 ## Local development
 ```bash
-cp gcp/a2a/remote_agent/.env.example gcp/a2a/remote_agent/.env
-# optional: cp gcp/a2a/.env.example gcp/a2a/.env
+cp gcp/a2a_agent/.env.example gcp/a2a_agent/.env
+# optional: cp evals/a2a/.env.example evals/a2a/.env
 
-cd gcp/a2a/remote_agent
+cd gcp/a2a_agent
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-python -m remote_agent --host 127.0.0.1 --port 8080
+python -m a2a_agent --host 127.0.0.1 --port 8080
 ```
 The service responds to standard A2A endpoints (e.g. `/.well-known/a2a-agent-card`, `/invoke`, `/healthz`). Remember to supply the API key:
 ```bash
@@ -46,14 +46,14 @@ curl -H "api-key: ${A2A_AGENT_API_KEY}" http://localhost:8080/.well-known/a2a-ag
 
 ## Run with Docker locally
 ```bash
-cd gcp/a2a/remote_agent
+cd gcp/a2a_agent
 docker build -t currency-agent .
 docker run --rm -p 8080:8080 --env-file .env currency-agent
 ```
 
 ## Build & deploy to Cloud Run
 ```bash
-cd gcp/a2a/remote_agent
+cd gcp/a2a_agent
 
 SERVICE_NAME=currency-agent
 REGION=us-central1
@@ -73,7 +73,7 @@ Drop `--allow-unauthenticated` if you want to front the service with IAP or requ
 ### Helper deploy script
 `deploy.py` automates the Cloud Build + Cloud Run flow and reuses `.env` for configuration:
 ```powershell
-cd gcp\a2a\remote_agent
+cd gcp\a2a_agent
 python deploy.py --env-file .\.env --service-name currency-agent --repo-name agents
 ```
 Flags of note:
@@ -89,7 +89,7 @@ Flags of note:
   response = client.chat("What is the USD to EUR rate today?")
   print(response)
   ```
-- `gcp/a2a/a2a_agent_eval.py` demonstrates how to call the agent via an Azure AI connection, capture responses, and score them with the Task Adherence and Intent Resolution evaluators.
+- `evals/a2a/a2a_agent_eval.py` demonstrates how to call the agent via an Azure AI connection, capture responses, and score them with the Task Adherence and Intent Resolution evaluators.
 
 ## Next steps
 - Swap in a different toolset by editing `CurrencyAgent` (e.g., add FX hedging tips or pricing history).

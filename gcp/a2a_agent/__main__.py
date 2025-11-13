@@ -1,4 +1,4 @@
-"""Module entrypoint enabling `python -m remote_agent`."""
+"""Module entrypoint enabling `python -m a2a_agent`."""
 
 from .main import main
 
