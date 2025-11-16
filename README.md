@@ -5,57 +5,20 @@ Minimal samples showing how to instrument third‑party agent frameworks for obs
 ## Overview
 
 - Focus: high‑signal, compact examples of tracing agent runs and tool calls.
-- Providers covered: AWS Bedrock, Google Vertex AI.
+- Providers covered: Azure AI Foundry, AWS Bedrock, Google Vertex AI.
 - Each folder has its own short README with setup and run steps.
 
-## Folders
+## What’s inside
 
-- `aws/` — Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/README.md`.
-- `gcp/` — Vertex AI LangChain agent samples with Azure tracing. See `gcp/README.md`.
-- `azure/` — Microsoft Agent Framework sample for Azure Container Apps with Azure Monitor tracing. See `azure/README.md`.
+- `azure/` – Azure Container Apps sample that hosts the Microsoft Agent Framework currency agent and deploys with `azd`.
+- `aws/agent_core/` – LangGraph + AgentCore currency agent that calls Bedrock models and, when available, streams traces to Azure Application Insights.
+- `gcp/cloud_run_agent/` – FastAPI service that hosts a multi-stage LangGraph travel planner on Cloud Run with Gemini, optional Azure tracing, and a helper `deploy.py`.
+- `gcp/vertex/` – Vertex AI Agent Engines sample that builds a LangChain `LangchainAgent`, wires in a currency-rate tool, and forwards spans to Azure when configured.
+- `gcp/a2a_agent/` – Remote LangGraph currency agent packaged with the A2A server runtime, Dockerfile, deployment helper, and its own README.
+- `evals/` – Evaluation utilities, including `trace/trace_eval.py` for Application Insights traces and `a2a/a2a_agent_eval.py` for driving the remote agent over A2A connections.
 
-## Getting Started
+## How to use the repo
 
-- Pick a provider folder and follow its README.
-- Requirements are listed per folder (e.g., `requirements.txt`).
-- To deploy the Azure sample end-to-end with Azure Developer CLI, run `azd up` from the repo root after configuring `env/.env.sample`.
-
-## HTTP Endpoints
-
-### Vertex AI
-
-POST `https://us-west1-aiplatform.googleapis.com/v1/projects/ninhu-project1/locations/us-west1/reasoningEngines/1304319857705091072:query`
-
-Body:
-
-```json
-{
-  "input": { "input": "What is the exchange rate from US dollars to SEK today?" }
-}
-```
-
-Headers:
-
-```http
-Authorization: Bearer <token>
-```
-
-Get token:
-
-```bash
-gcloud auth application-default print-access-token
-```
-
-### AWS AgentCore
-
-POST `https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A025211824558%3Aruntime%2Fagentcore_langgraph_agent-1EC4Au3NoU/invocations?qualifier=DEFAULT`
-
-Body:
-
-```json
-{
-  "prompt": "What is the exchange rate from USD to EUR today?"
-}
-```
-
-Auth: AWS Signature Version 4 (SigV4)
+1. Pick the scenario you care about and open its README for architecture, setup, and deployment notes.
+2. Copy the matching `.env.example` file, fill in your cloud credentials, and install the requirements listed for that sample.
+3. Follow the per-sample README to run locally or deploy; when `APPLICATION_INSIGHTS_CONNECTION_STRING` (or equivalent) is set, telemetry flows into Azure automatically.

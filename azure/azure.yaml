@@ -4,7 +4,7 @@ metadata:
 services:
   agentapp:
     language: python
-    project: ./azure
+    project: .
     resourceName: ${service__agentapp__name}
     host: containerapp
     docker:
@@ -19,7 +19,7 @@ services:
       APPLICATION_INSIGHTS_CONNECTION_STRING: ${applicationInsightsConnectionString}
 infra:
   provider: bicep
-  path: infra
+  path: ./infra
   parameters:
     location: ${AZURE_LOCATION}
     environmentName: ${AZURE_ENV_NAME}

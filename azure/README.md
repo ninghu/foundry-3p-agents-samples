@@ -40,9 +40,10 @@ Currency exchange agent sample running inside Azure Container Apps (ACA) using t
 
 ## Deploy with Azure Developer CLI (`azd`)
 
-1. **Create an environment**
+1. **Create an environment** *(run from the `azure/` folder)*
 
    ```powershell
+   Push-Location azure
    azd env new agent-sample
    Copy-Item env/.env.sample .azure/agent-sample/.env
    notepad .azure/agent-sample/.env  # Update subscription, location, and Azure AI settings
@@ -59,6 +60,7 @@ Currency exchange agent sample running inside Azure Container Apps (ACA) using t
    ```powershell
    $env:ACA_ENDPOINT = azd env get-value SERVICE_AGENTAPP_HOST
    Invoke-RestMethod -Method Post -Uri "https://$env:ACA_ENDPOINT/invoke" -Body (@{ prompt = "Current USD to SEK rate?" } | ConvertTo-Json) -ContentType "application/json"
+   Pop-Location
    ```
 
 `azd up` provisions the infrastructure defined in `infra/main.bicep` (Container Apps environment, Container Registry, Log Analytics, Application Insights) and deploys the container using managed identity. Update the generated `.env` file with your Azure AI project endpoint, model deployment name, and optional agent ID before running the command.
@@ -90,7 +92,9 @@ az containerapp up `
 - `agent_framework_container_app.py` – FastAPI host that wires Microsoft Agent Framework to ACA and emits Application Insights traces.
 - `Dockerfile` – Container image definition for local or ACA deployment.
 - `requirements.txt` – Python dependencies.
-- `azure.yaml` – Azure Developer CLI manifest for infra + app deployment.
+- `azure.yaml` – Azure Developer CLI manifest that now lives alongside the app code.
+- `infra/` – Bicep template (`main.bicep`), compiled ARM template, and parameters used by `azd`.
+- `env/` – Sample `.env` file seeded when you create a new azd environment.
 
 ## Observability
 
