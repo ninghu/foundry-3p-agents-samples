@@ -12,11 +12,13 @@ Minimal samples showing how to instrument third‑party agent frameworks for obs
 
 - `aws/` — Bedrock + LangGraph + AgentCore sample with Azure tracing. See `aws/README.md`.
 - `gcp/` — Vertex AI LangChain agent samples with Azure tracing. See `gcp/README.md`.
+- `azure/` — Microsoft Agent Framework sample for Azure Container Apps with Azure Monitor tracing. See `azure/README.md`.
 
 ## Getting Started
 
 - Pick a provider folder and follow its README.
 - Requirements are listed per folder (e.g., `requirements.txt`).
+- To deploy the Azure sample end-to-end with Azure Developer CLI, run `azd up` from the repo root after configuring `env/.env.sample`.
 
 ## HTTP Endpoints
 
@@ -26,7 +28,7 @@ POST `https://us-west1-aiplatform.googleapis.com/v1/projects/ninhu-project1/loca
 
 Body:
 
-```
+```json
 {
   "input": { "input": "What is the exchange rate from US dollars to SEK today?" }
 }
@@ -34,13 +36,13 @@ Body:
 
 Headers:
 
-```
+```http
 Authorization: Bearer <token>
 ```
 
 Get token:
 
-```
+```bash
 gcloud auth application-default print-access-token
 ```
 
@@ -50,7 +52,7 @@ POST `https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abed
 
 Body:
 
-```
+```json
 {
   "prompt": "What is the exchange rate from USD to EUR today?"
 }

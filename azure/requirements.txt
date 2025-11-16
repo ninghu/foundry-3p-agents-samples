@@ -1,0 +1,9 @@
+agent-framework
+agent-framework-azure-ai
+azure-identity
+fastapi
+uvicorn[standard]
+requests
+opentelemetry-sdk
+azure-monitor-opentelemetry-exporter
+opentelemetry-instrumentation-fastapi

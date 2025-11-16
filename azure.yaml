@@ -1,0 +1,29 @@
+name: azure-agent-framework
+metadata:
+  template: ms.agent-framework-containerapp
+services:
+  agentapp:
+    language: python
+    project: ./azure
+    resourceName: ${service__agentapp__name}
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      image: agentapp
+      registry: "${containerRegistryLoginServer}"
+    env:
+      AZURE_AI_PROJECT_ENDPOINT: ${AZURE_AI_PROJECT_ENDPOINT}
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      AZURE_AI_AGENT_ID: ${AZURE_AI_AGENT_ID}
+      APPLICATION_INSIGHTS_CONNECTION_STRING: ${applicationInsightsConnectionString}
+infra:
+  provider: bicep
+  path: infra
+  parameters:
+    location: ${AZURE_LOCATION}
+    environmentName: ${AZURE_ENV_NAME}
+    azureAiProjectEndpoint: ${AZURE_AI_PROJECT_ENDPOINT}
+    azureAiModelDeploymentName: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+    azureAiAgentId: ${AZURE_AI_AGENT_ID}
+    agentappImage: ${SERVICE_AGENTAPP_IMAGE}
