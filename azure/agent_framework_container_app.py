@@ -23,6 +23,8 @@ from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
 from agent_framework.observability import setup_observability
 from azure.identity.aio import DefaultAzureCredential
+from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry.sdk.resources import Resource
 
 logger = logging.getLogger("azure_agent")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
@@ -39,13 +41,17 @@ MAX_RETRIES = 3
 
 
 def _configure_observability() -> None:
-    if not APPLICATION_INSIGHTS_CONNECTION_STRING:
-        logger.warning("No Application Insights connection string provided; tracing disabled.")
-        return
-
     try:
+        configure_kwargs: Dict[str, Any] = {
+            "resource": Resource.create({"service.name": SERVICE_NAME})
+        }
+        if APPLICATION_INSIGHTS_CONNECTION_STRING:
+            configure_kwargs["connection_string"] = APPLICATION_INSIGHTS_CONNECTION_STRING
+        else:
+            logger.warning("No Application Insights connection string provided; Azure Monitor exporter disabled.")
+
+        configure_azure_monitor(**configure_kwargs)
         setup_observability(
-            applicationinsights_connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
             enable_sensitive_data=False,
         )
         logger.info("Microsoft Agent Framework observability configured for service %s", SERVICE_NAME)

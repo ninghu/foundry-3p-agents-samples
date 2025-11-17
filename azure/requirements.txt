@@ -5,5 +5,5 @@ fastapi
 uvicorn[standard]
 requests
 opentelemetry-sdk
-azure-monitor-opentelemetry-exporter
+azure-monitor-opentelemetry
 opentelemetry-instrumentation-fastapi
