@@ -17,6 +17,7 @@ services:
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       AZURE_AI_AGENT_ID: ${AZURE_AI_AGENT_ID}
       APPLICATION_INSIGHTS_CONNECTION_STRING: ${applicationInsightsConnectionString}
+      A2A_PUBLIC_BASE_URL: ${A2A_PUBLIC_BASE_URL}
 infra:
   provider: bicep
   path: ./infra
@@ -26,4 +27,16 @@ infra:
     azureAiProjectEndpoint: ${AZURE_AI_PROJECT_ENDPOINT}
     azureAiModelDeploymentName: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
     azureAiAgentId: ${AZURE_AI_AGENT_ID}
-    agentappImage: ${SERVICE_AGENTAPP_IMAGE}
+  agentappImage: ${SERVICE_AGENTAPP_IMAGE}
+  enableAzureOpenAi: ${ENABLE_AZURE_OPENAI}
+  azureOpenAiLocation: ${AZURE_OPENAI_LOCATION}
+  azureOpenAiDeploymentName: ${AZURE_OPENAI_DEPLOYMENT}
+  azureOpenAiModelName: ${AZURE_OPENAI_MODEL_NAME}
+  azureOpenAiModelVersion: ${AZURE_OPENAI_MODEL_VERSION}
+  azureOpenAiSkuName: ${AZURE_OPENAI_SKU_NAME}
+  azureOpenAiDeploymentSkuName: ${AZURE_OPENAI_DEPLOYMENT_SKU}
+  azureOpenAiSkuCapacity: ${AZURE_OPENAI_SKU_CAPACITY}
+  enableAzureAiProject: ${ENABLE_AZURE_AI_PROJECT}
+  azureAiHubDisplayName: ${AZURE_AI_HUB_DISPLAY_NAME}
+  azureAiProjectDisplayName: ${AZURE_AI_PROJECT_DISPLAY_NAME}
+  azureAiProjectDescription: ${AZURE_AI_PROJECT_DESCRIPTION}

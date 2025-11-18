@@ -24,6 +24,10 @@ Currency exchange agent sample running inside Azure Container Apps (ACA) using t
    $env:APPLICATION_INSIGHTS_CONNECTION_STRING="InstrumentationKey=..."
    # Optional when using an existing agent
    # $env:AZURE_AI_AGENT_ID="<existing-agent-id>"
+   # Optional: provide Azure OpenAI credentials if running evaluators locally
+   # $env:AZURE_OPENAI_ENDPOINT="https://<your-azure-openai>.openai.azure.com/"
+   # $env:AZURE_OPENAI_DEPLOYMENT="gpt-4o-mini"
+   # $env:AZURE_OPENAI_KEY="<azure-openai-key>"
    ```
 
 4. **Run locally**
@@ -46,8 +50,10 @@ Currency exchange agent sample running inside Azure Container Apps (ACA) using t
    Push-Location azure
    azd env new agent-sample
    Copy-Item env/.env.sample .azure/agent-sample/.env
-   notepad .azure/agent-sample/.env  # Update subscription, location, and Azure AI settings
+   notepad .azure/agent-sample/.env  # Update subscription, location, and provisioning toggles
    ```
+
+   The `.env.sample` now includes switches to provision an Azure AI hub/project and an Azure OpenAI resource. Leave `AZURE_AI_PROJECT_ENDPOINT` blank and keep `ENABLE_AZURE_AI_PROJECT=true` to let `azd up` create a fresh Azure AI Foundry project that shares the same Application Insights instance as the Container App. Set `ENABLE_AZURE_OPENAI=true` (default) to create an Azure OpenAI account + GPT-4o mini deployment for the evaluator scripts. If you prefer to reuse existing resources, flip either toggle to `false` and supply the corresponding endpoint values manually.
 
 2. **Provision and deploy**
 
@@ -62,6 +68,25 @@ Currency exchange agent sample running inside Azure Container Apps (ACA) using t
    Invoke-RestMethod -Method Post -Uri "https://$env:ACA_ENDPOINT/invoke" -Body (@{ prompt = "Current USD to SEK rate?" } | ConvertTo-Json) -ContentType "application/json"
    Pop-Location
    ```
+
+4. **Sync outputs for evaluation tooling (optional)**
+
+   After `azd up`, pull the generated Azure AI / Azure OpenAI endpoints into your environment file:
+
+   ```powershell
+   Push-Location azure
+   azd env refresh
+   azd env get-values | ConvertFrom-Json | Select-Object AZURE_AI_PROJECT_ENDPOINT,AZURE_OPENAI_ENDPOINT,AZURE_OPENAI_DEPLOYMENT
+   Pop-Location
+   ```
+
+   The Azure OpenAI API key is stored with the Container App as the secret `azure-openai-key`. You can retrieve it with:
+
+   ```powershell
+    az cognitiveservices account keys list --ids (azd env get-value AZURE_OPENAI_RESOURCE_ID)
+   ```
+
+   Copy those values into `evals/a2a/.env` before running the evaluator harness.
 
 `azd up` provisions the infrastructure defined in `infra/main.bicep` (Container Apps environment, Container Registry, Log Analytics, Application Insights) and deploys the container using managed identity. Update the generated `.env` file with your Azure AI project endpoint, model deployment name, and optional agent ID before running the command.
 

@@ -1,5 +1,6 @@
 agent-framework
 agent-framework-azure-ai
+agent-framework-a2a
 azure-identity
 fastapi
 uvicorn[standard]

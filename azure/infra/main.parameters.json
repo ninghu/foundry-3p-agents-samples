@@ -19,6 +19,42 @@
     },
     "agentappImage": {
       "value": "${SERVICE_AGENTAPP_IMAGE}"
+    },
+    "enableAzureOpenAi": {
+      "value": "${ENABLE_AZURE_OPENAI}"
+    },
+    "azureOpenAiLocation": {
+      "value": "${AZURE_OPENAI_LOCATION}"
+    },
+    "azureOpenAiDeploymentName": {
+      "value": "${AZURE_OPENAI_DEPLOYMENT}"
+    },
+    "azureOpenAiModelName": {
+      "value": "${AZURE_OPENAI_MODEL_NAME}"
+    },
+    "azureOpenAiModelVersion": {
+      "value": "${AZURE_OPENAI_MODEL_VERSION}"
+    },
+    "azureOpenAiSkuName": {
+      "value": "${AZURE_OPENAI_SKU_NAME}"
+    },
+    "azureOpenAiDeploymentSkuName": {
+      "value": "${AZURE_OPENAI_DEPLOYMENT_SKU}"
+    },
+    "azureOpenAiSkuCapacity": {
+      "value": "${AZURE_OPENAI_SKU_CAPACITY}"
+    },
+    "enableAzureAiProject": {
+      "value": "${ENABLE_AZURE_AI_PROJECT}"
+    },
+    "azureAiHubDisplayName": {
+      "value": "${AZURE_AI_HUB_DISPLAY_NAME}"
+    },
+    "azureAiProjectDisplayName": {
+      "value": "${AZURE_AI_PROJECT_DISPLAY_NAME}"
+    },
+    "azureAiProjectDescription": {
+      "value": "${AZURE_AI_PROJECT_DESCRIPTION}"
     }
   }
 }
