@@ -1,0 +1,9 @@
+# Shared dependencies for the A2A evaluation sample.
+
+# Core client + helpers for driving the remote agent.
+a2a-sdk>=0.3.0
+httpx>=0.28.1
+python-dotenv>=1.0.1
+
+azure-ai-evaluation[redteam]
+azure-identity>=1.17.0

@@ -1,9 +1,10 @@
 agent-framework
 agent-framework-azure-ai
+agent-framework-a2a
 azure-identity
 fastapi
 uvicorn[standard]
 requests
 opentelemetry-sdk
-azure-monitor-opentelemetry-exporter
+azure-monitor-opentelemetry
 opentelemetry-instrumentation-fastapi

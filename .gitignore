@@ -1,0 +1,28 @@
+# Bytecode cache
+__pycache__/
+*.pyc
+
+# Local environments / venvs
+.venv/
+venv/
+env/
+
+# IDE/editor config
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Build / packaging artifacts
+dist/
+build/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local config & secrets
+.env
+*.env.local

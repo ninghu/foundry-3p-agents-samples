@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any, Dict, List, Optional
 
 import boto3
 import requests
@@ -13,18 +13,28 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 
-from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer  # type: ignore
+import logging
+
+try:
+    from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    AzureAIOpenTelemetryTracer = None  # type: ignore
 
 
 from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
 
+logger = logging.getLogger(__name__)
+
+
 AWS_REGION = "us-west-2"
 BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=fab6ed44-6fc3-45e8-a8a9-6a10d8ac4868;IngestionEndpoint=https://norwayeast-0.in.applicationinsights.azure.com/;LiveEndpoint=https://norwayeast.livediagnostics.monitor.azure.com/;ApplicationId=17edf920-0611-4341-a46d-af587e423154"
+APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=5d1fa8c4-e29b-4c4c-88bf-7882e5ed499b;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=905f014f-78bc-4acb-99d4-ff35635c9bfd"
 AGENT_NAME = "aws-currency-exchange-agent"
-AGENT_ID = f"aws-agent-7x9k2"
+AGENT_ID = "ninhu-aws-agent-1105"
 PROVIDER_NAME = "aws.bedrock"
-SYSTEM_PROMPT = "You help users understand currency exchange rates and related context."
+SYSTEM_PROMPT = (
+    "You help users understand currency exchange rates and related context."
+)
 
 
 @tool
@@ -69,7 +79,7 @@ def _build_langgraph():
     graph_builder.add_edge("tools", "assistant")
     graph_builder.add_edge(START, "assistant")
 
-    return graph_builder.compile()
+    return graph_builder.compile(name="aws currency exchange agent")
 
 
 def _last_message_content(messages: List[Any]) -> str:
@@ -84,13 +94,23 @@ def _last_message_content(messages: List[Any]) -> str:
 
 
 def _create_graph_executor():
-    tracer = AzureAIOpenTelemetryTracer(
-        connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
-        enable_content_recording=True,
-        name=AGENT_NAME,
-        id=AGENT_ID,
-        provider_name=PROVIDER_NAME,
-    )
+    tracer: Optional[Any] = None
+    if AzureAIOpenTelemetryTracer is None:
+        logger.warning(
+            "langchain-azure-ai not installed; continuing without Azure Application Insights tracing.",
+        )
+    elif not APPLICATION_INSIGHTS_CONNECTION_STRING:
+        logger.info(
+            "APPLICATION_INSIGHTS_CONNECTION_STRING not provided; Azure tracing disabled.",
+        )
+    else:
+        tracer = AzureAIOpenTelemetryTracer(
+            connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
+            enable_content_recording=True,
+            name=AGENT_NAME,
+            agent_id=AGENT_ID,
+            provider_name=PROVIDER_NAME,
+        )
     graph = _build_langgraph()
     return graph, tracer
 
