@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "azureAiProjectEndpoint": {
+      "value": "${AZURE_AI_PROJECT_ENDPOINT}"
+    },
+    "azureAiModelDeploymentName": {
+      "value": "${AZURE_AI_MODEL_DEPLOYMENT_NAME}"
+    },
+    "azureAiAgentId": {
+      "value": "${AZURE_AI_AGENT_ID}"
+    },
+    "agentappImage": {
+      "value": "${SERVICE_AGENTAPP_IMAGE}"
+    },
+    "enableAzureOpenAi": {
+      "value": "${ENABLE_AZURE_OPENAI}"
+    },
+    "azureOpenAiLocation": {
+      "value": "${AZURE_OPENAI_LOCATION}"
+    },
+    "azureOpenAiDeploymentName": {
+      "value": "${AZURE_OPENAI_DEPLOYMENT}"
+    },
+    "azureOpenAiModelName": {
+      "value": "${AZURE_OPENAI_MODEL_NAME}"
+    },
+    "azureOpenAiModelVersion": {
+      "value": "${AZURE_OPENAI_MODEL_VERSION}"
+    },
+    "azureOpenAiSkuName": {
+      "value": "${AZURE_OPENAI_SKU_NAME}"
+    },
+    "azureOpenAiDeploymentSkuName": {
+      "value": "${AZURE_OPENAI_DEPLOYMENT_SKU}"
+    },
+    "azureOpenAiSkuCapacity": {
+      "value": "${AZURE_OPENAI_SKU_CAPACITY}"
+    },
+    "enableAzureAiProject": {
+      "value": "${ENABLE_AZURE_AI_PROJECT}"
+    },
+    "azureAiHubDisplayName": {
+      "value": "${AZURE_AI_HUB_DISPLAY_NAME}"
+    },
+    "azureAiProjectDisplayName": {
+      "value": "${AZURE_AI_PROJECT_DISPLAY_NAME}"
+    },
+    "azureAiProjectDescription": {
+      "value": "${AZURE_AI_PROJECT_DESCRIPTION}"
+    }
+  }
+}

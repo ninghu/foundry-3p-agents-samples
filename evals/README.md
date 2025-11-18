@@ -77,6 +77,7 @@ Set the following keys in `.env`:
 Feel free to edit `dataset.jsonl` to supply your own prompts/responses; the helper `_create_dataset_with_agent_id` will inject the `agent_id` column required by the Azure AI evaluation APIs.
 
 ### Run the evaluation
+
 ```bash
 cd evals/a2a
 python -m venv .venv
@@ -84,4 +85,5 @@ source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python a2a_agent_eval.py
 ```
+
 The script reads credentials from `.env`, grabs the Azure AI connection for the configured `agent_id`, invokes the remote agent for every dataset row, and prints the evaluator scores. Results are also uploaded to the Azure AI Project specified in `.env`, and the temporary dataset created during the run is cleaned up automatically.
