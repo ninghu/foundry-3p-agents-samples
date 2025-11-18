@@ -4,7 +4,7 @@ metadata:
 services:
   agentapp:
     language: python
-    project: ./azure
+    project: .
     resourceName: ${service__agentapp__name}
     host: containerapp
     docker:
@@ -19,11 +19,13 @@ services:
       APPLICATION_INSIGHTS_CONNECTION_STRING: ${applicationInsightsConnectionString}
 infra:
   provider: bicep
-  path: infra
+  path: ./infra
   parameters:
     location: ${AZURE_LOCATION}
     environmentName: ${AZURE_ENV_NAME}
     azureAiProjectEndpoint: ${AZURE_AI_PROJECT_ENDPOINT}
     azureAiModelDeploymentName: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
     azureAiAgentId: ${AZURE_AI_AGENT_ID}
+    azureAiAccountResourceId: ${AZURE_AI_ACCOUNT_RESOURCE_ID}
+    deploymentMarker: ${DEPLOYMENT_MARKER}
     agentappImage: ${SERVICE_AGENTAPP_IMAGE}

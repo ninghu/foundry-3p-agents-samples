@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from contextlib import nullcontext
 from typing import Annotated, Any, Dict, Optional
 
 import requests
@@ -22,17 +21,8 @@ from pydantic import BaseModel, Field
 
 from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
+from agent_framework.observability import setup_observability
 from azure.identity.aio import DefaultAzureCredential
-
-from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-try:  # Optional dependency for Application Insights export
-    from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
-except ImportError:  # pragma: no cover - exporter optional in local dev
-    AzureMonitorTraceExporter = None
 
 logger = logging.getLogger("azure_agent")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
@@ -48,30 +38,22 @@ DEFAULT_TIMEOUT_SECONDS = 10
 MAX_RETRIES = 3
 
 
-def _configure_tracer() -> Optional[trace.Tracer]:
-    """Configure OpenTelemetry tracer for Azure Monitor if connection string is provided."""
+def _configure_observability() -> None:
     if not APPLICATION_INSIGHTS_CONNECTION_STRING:
         logger.warning("No Application Insights connection string provided; tracing disabled.")
-        return None
-    if AzureMonitorTraceExporter is None:
-        logger.warning(
-            "azure-monitor-opentelemetry-exporter not installed; install it to enable Application Insights telemetry.")
-        return None
+        return
 
-    resource = Resource.create({
-        "service.name": SERVICE_NAME,
-        "service.namespace": "foundry-3p-agents",
-        "service.instance.id": os.getenv("HOSTNAME", "local"),
-    })
-    provider = TracerProvider(resource=resource)
-    exporter = AzureMonitorTraceExporter.from_connection_string(APPLICATION_INSIGHTS_CONNECTION_STRING)
-    provider.add_span_processor(BatchSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    logger.info("Azure Monitor tracing configured for service %s", SERVICE_NAME)
-    return trace.get_tracer(__name__)
+    try:
+        setup_observability(
+            applicationinsights_connection_string=APPLICATION_INSIGHTS_CONNECTION_STRING,
+            enable_sensitive_data=False,
+        )
+        logger.info("Microsoft Agent Framework observability configured for service %s", SERVICE_NAME)
+    except Exception as exc:  # pragma: no cover - best-effort telemetry setup
+        logger.exception("Failed to configure observability: %s", exc)
 
 
-TRACER = _configure_tracer()
+_configure_observability()
 
 
 def get_exchange_rate(
@@ -189,8 +171,7 @@ class AgentRuntime:
         if callable(thread_factory):
             run_kwargs["thread"] = thread_factory()
 
-        with TRACER.start_as_current_span("agent.run") if TRACER else nullcontext():
-            result = await self.agent.run(prompt, **run_kwargs)
+        result = await self.agent.run(prompt, **run_kwargs)
 
         if hasattr(result, "text"):
             return str(result.text)
