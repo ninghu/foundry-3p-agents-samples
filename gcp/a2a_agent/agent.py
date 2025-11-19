@@ -1,3 +1,4 @@
+import logging
 import os
 from collections.abc import AsyncIterable
 from typing import Any, Literal
@@ -7,15 +8,56 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
 
+try:  # Optional dependency for Azure tracing
+    from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
+except ImportError:  # pragma: no cover - optional dependency
+    AzureAIOpenTelemetryTracer = None  # type: ignore[assignment]
 
-load_dotenv()
 
+load_dotenv(override=True)
+
+logger = logging.getLogger(__name__)
 memory = MemorySaver()
+
+
+def _str_to_bool(value: str | None, default: bool = True) -> bool:
+    if value is None:
+        return default
+    return value.lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _build_tracer() -> Any | None:
+    """Return the Azure tracer if dependencies + env configuration are present."""
+    if AzureAIOpenTelemetryTracer is None:
+        logger.info(
+            'langchain-azure-ai not installed; Azure Application Insights tracing disabled.',
+        )
+        return None
+
+    connection_string = os.getenv('APPLICATION_INSIGHTS_CONNECTION_STRING')
+    if not connection_string:
+        logger.info(
+            'APPLICATION_INSIGHTS_CONNECTION_STRING not set; Azure tracing disabled.',
+        )
+        return None
+
+    tracer = AzureAIOpenTelemetryTracer(
+        connection_string=connection_string,
+        enable_content_recording=_str_to_bool(
+            os.getenv('APPLICATION_INSIGHTS_ENABLE_CONTENT'),
+            default=True,
+        ),
+        name=os.getenv('APPLICATION_INSIGHTS_AGENT_NAME', 'gcp-a2a-currency-agent'),
+        agent_id=os.getenv('APPLICATION_INSIGHTS_AGENT_ID', 'gcp-a2a-currency-agent'),
+        provider_name=os.getenv('APPLICATION_INSIGHTS_PROVIDER_NAME', 'gcp.a2a'),
+    )
+    logger.info('Azure Application Insights tracing enabled for the A2A agent.')
+    return tracer
 
 
 @tool
@@ -69,7 +111,8 @@ class CurrencyAgent:
     SUPPORTED_CONTENT_TYPES = ['text', 'text/plain']
 
     def __init__(self):
-        model_source = os.getenv('model_source', 'google')
+        model_source = os.getenv('model_source', 'google').lower()
+        self.tracer = _build_tracer()
         if model_source == 'google':
             model_name = os.getenv('GOOGLE_MODEL_NAME')
             if not model_name:
@@ -77,6 +120,32 @@ class CurrencyAgent:
                     'GOOGLE_MODEL_NAME must be set when model_source=google.',
                 )
             self.model = ChatGoogleGenerativeAI(model=model_name)
+        elif model_source == 'azure':
+            azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT') or os.getenv('TOOL_LLM_URL')
+            azure_deployment = os.getenv('AZURE_OPENAI_DEPLOYMENT') or os.getenv('TOOL_LLM_NAME')
+            azure_api_key = os.getenv('AZURE_OPENAI_API_KEY') or os.getenv('API_KEY')
+            azure_api_version = os.getenv('AZURE_OPENAI_API_VERSION') or os.getenv(
+                'OPENAI_API_VERSION',
+            ) or '2024-08-01-preview'
+            if not azure_endpoint:
+                raise EnvironmentError(
+                    'AZURE_OPENAI_ENDPOINT (or TOOL_LLM_URL) must be set when model_source=azure.',
+                )
+            if not azure_deployment:
+                raise EnvironmentError(
+                    'AZURE_OPENAI_DEPLOYMENT (or TOOL_LLM_NAME) must be set when model_source=azure.',
+                )
+            if not azure_api_key:
+                raise EnvironmentError(
+                    'AZURE_OPENAI_API_KEY (or API_KEY) must be set when model_source=azure.',
+                )
+            self.model = AzureChatOpenAI(
+                azure_deployment=azure_deployment,
+                azure_endpoint=azure_endpoint,
+                api_key=azure_api_key,
+                api_version=azure_api_version,
+                temperature=0,
+            )
         else:
             openai_model = os.getenv('TOOL_LLM_NAME')
             openai_base = os.getenv('TOOL_LLM_URL')
@@ -102,7 +171,9 @@ class CurrencyAgent:
 
     async def stream(self, query: str, context_id: str) -> AsyncIterable[dict[str, Any]]:
         inputs = {'messages': [('user', query)]}
-        config = {'configurable': {'thread_id': context_id}}
+        config: dict[str, Any] = {'configurable': {'thread_id': context_id}}
+        if self.tracer:
+            config['callbacks'] = [self.tracer]
 
         for item in self.graph.stream(inputs, config, stream_mode='values'):
             message = item['messages'][-1]

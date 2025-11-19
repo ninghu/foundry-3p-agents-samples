@@ -9,3 +9,6 @@ uvicorn[standard]>=0.34.2
 sse-starlette>=2.3.6
 starlette>=0.46.2
 a2a-sdk>=0.3.0
+azure-monitor-opentelemetry
+azure-monitor-opentelemetry-exporter==1.0.0b42
+langchain-azure-ai[opentelemetry]

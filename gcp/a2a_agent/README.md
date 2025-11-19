@@ -11,21 +11,27 @@ Remote A2A agent that wraps a LangGraph-powered currency assistant. The agent us
 
 Optional:
 - `evals/a2a/.env` for the evaluation script (`a2a_agent_eval.py`)
+- Azure Application Insights resource + connection string if you want tracing.
 
 ## Configuration overview
 `main.py` and `agent.py` read the following environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `model_source` | Set to `google` (default) to use Gemini or any other string to switch to an OpenAI-style endpoint. |
+| `model_source` | Set to `google` (default) to use Gemini, `azure` for Azure OpenAI, or any other string for an OpenAI-compatible endpoint. |
 | `GOOGLE_API_KEY`, `GOOGLE_MODEL_NAME` | Required when `model_source=google`. |
-| `TOOL_LLM_URL`, `TOOL_LLM_NAME`, `API_KEY` | Required when using the OpenAI-style path. |
+| `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION` | Preferred when `model_source=azure`. `AZURE_OPENAI_API_VERSION` falls back to `OPENAI_API_VERSION` or `2024-08-01-preview` (needed for structured outputs). `TOOL_LLM_URL`, `TOOL_LLM_NAME`, and `API_KEY` remain valid fallbacks for endpoint, deployment, and key. |
+| `TOOL_LLM_URL`, `TOOL_LLM_NAME`, `API_KEY` | Required when using a generic OpenAI-compatible path. |
+| `APPLICATION_INSIGHTS_CONNECTION_STRING`, `APPLICATION_INSIGHTS_AGENT_NAME`, `APPLICATION_INSIGHTS_AGENT_ID`, `APPLICATION_INSIGHTS_PROVIDER_NAME`, `APPLICATION_INSIGHTS_ENABLE_CONTENT` | Optional telemetry knobs. When the connection string is set (and `langchain-azure-ai[opentelemetry]` is installed), the agent attaches `AzureAIOpenTelemetryTracer` spans to every LangGraph invocation. |
 | `A2A_AGENT_API_KEY` | Guards every request except `/`, `/healthz`, and `/_ah/health`. Provide via header `api-key` or query `api_key`. |
 | `PUBLIC_HOST` / `PUBLIC_PORT` / `PUBLIC_SCHEME` | Controls the URLs advertised in the A2A agent card (defaults to whatever host:port the server binds to). |
 | `BIND_HOST`, `HOST`, `PORT` | Override the server bind address when running locally or in containers. Cloud Run injects `PORT` automatically. |
 | `GCP_PROJECT_ID`, `GCP_REGION` | Consumed by `deploy.py` to figure out build/deploy targets. |
 
 See `.env.example` for a ready-to-copy template.
+
+### Azure Application Insights tracing
+Tracing is disabled by default. Set `APPLICATION_INSIGHTS_CONNECTION_STRING` (plus optional name/id/provider overrides) to enable `AzureAIOpenTelemetryTracer` and stream LangGraph spans into Azure Application Insights. Use `APPLICATION_INSIGHTS_ENABLE_CONTENT=false` if you prefer to redact prompt/response bodies from the traces.
 
 ## Local development
 ```bash

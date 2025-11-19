@@ -26,7 +26,7 @@ else:
     from .agent_executor import CurrencyAgentExecutor
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -167,10 +167,17 @@ def main(host: str | None, port: int | None) -> None:
 
 
 def _validate_required_config() -> None:
-    model_source = os.getenv('model_source', 'google')
+    model_source = os.getenv('model_source', 'google').lower()
     if model_source == 'google':
         if not os.getenv('GOOGLE_API_KEY'):
             raise MissingAPIKeyError('GOOGLE_API_KEY environment variable not set.')
+    elif model_source == 'azure':
+        if not (os.getenv('AZURE_OPENAI_ENDPOINT') or os.getenv('TOOL_LLM_URL')):
+            raise MissingAPIKeyError('AZURE_OPENAI_ENDPOINT or TOOL_LLM_URL must be set when model_source=azure.')
+        if not (os.getenv('AZURE_OPENAI_DEPLOYMENT') or os.getenv('TOOL_LLM_NAME')):
+            raise MissingAPIKeyError('AZURE_OPENAI_DEPLOYMENT or TOOL_LLM_NAME must be set when model_source=azure.')
+        if not (os.getenv('AZURE_OPENAI_API_KEY') or os.getenv('API_KEY')):
+            raise MissingAPIKeyError('AZURE_OPENAI_API_KEY or API_KEY must be set when model_source=azure.')
     else:
         if not os.getenv('TOOL_LLM_URL'):
             raise MissingAPIKeyError('TOOL_LLM_URL environment variable not set.')
