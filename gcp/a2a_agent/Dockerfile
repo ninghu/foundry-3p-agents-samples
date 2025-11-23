@@ -8,7 +8,7 @@ WORKDIR /srv
 
 # Install system dependencies required for building some Python packages
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y build-essential curl \
+    && apt-get install --no-install-recommends -y build-essential curl git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
