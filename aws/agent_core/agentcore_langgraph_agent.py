@@ -26,11 +26,16 @@ from langchain_aws.chat_models import ChatBedrock as _BedrockChatModel
 logger = logging.getLogger(__name__)
 
 
-AWS_REGION = "us-west-2"
-BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-APPLICATION_INSIGHTS_CONNECTION_STRING = "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
-AGENT_NAME = "aws-currency-exchange-agent"
-AGENT_ID = "ninhu-aws-agent-1105"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0")
+APPLICATION_INSIGHTS_CONNECTION_STRING = os.getenv("APPLICATION_INSIGHTS_CONNECTION_STRING")
+AGENT_NAME = os.getenv("AGENT_NAME")
+AGENT_ID = os.getenv("AGENT_ID")
 PROVIDER_NAME = "aws.bedrock"
 SYSTEM_PROMPT = (
     "You help users understand currency exchange rates and related context."
