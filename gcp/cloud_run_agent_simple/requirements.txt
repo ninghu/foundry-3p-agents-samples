@@ -1,0 +1,12 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+langgraph>=1.0.0
+langchain-google-genai>=2.0.10
+langchain-azure-ai[opentelemetry]
+azure-monitor-opentelemetry-exporter==1.0.0b42
+azure-monitor-opentelemetry
+python-dotenv>=1.0.1
+pydantic>=2.8.0
+typing-extensions>=4.12.2
+requests>=2.32.3
+click>=8.1.7
