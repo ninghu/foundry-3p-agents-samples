@@ -1,4 +1,4 @@
-default_agent: agentcore_langgraph_agent
+default_agent: aws_currency_exchange_agent
 agents:
   agentcore_langgraph_agent:
     name: agentcore_langgraph_agent
@@ -36,6 +36,10 @@ agents:
       event_expiry_days: 30
       first_invoke_memory_check_done: false
       was_created_by_toolkit: false
-    authorizer_configuration: null
+    authorizer_configuration:
+      customJWTAuthorizer:
+        discoveryUrl: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0/.well-known/openid-configuration
+        allowedAudience:
+        - ce7a0eb3-a0c7-4eec-bb59-3b47ab629a17
     request_header_configuration: null
     oauth_configuration: null
