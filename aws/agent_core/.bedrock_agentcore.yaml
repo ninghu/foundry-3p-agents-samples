@@ -1,4 +1,4 @@
-default_agent: aws_currency_exchange_agent
+default_agent: agentcore_langgraph_agent
 agents:
   agentcore_langgraph_agent:
     name: agentcore_langgraph_agent
