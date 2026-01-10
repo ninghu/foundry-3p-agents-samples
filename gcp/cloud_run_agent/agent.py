@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import StructuredTool, tool
 
 try:  # Optional dependency
@@ -176,7 +177,6 @@ def _configure_tracer() -> AzureAIOpenTelemetryTracer | None:
     tracer = AzureAIOpenTelemetryTracer(
         connection_string=connection_string,
         enable_content_recording=_str_to_bool(os.getenv("APPLICATION_INSIGHTS_ENABLE_CONTENT"), default=True),
-        name=os.getenv("APPLICATION_INSIGHTS_AGENT_NAME", "nested-travel-planner"),
         agent_id=os.getenv("APPLICATION_INSIGHTS_AGENT_ID", "nested-travel-planner"),
         provider_name=_provider_name(),
     )
@@ -315,14 +315,28 @@ def mock_search_dining(destination: str) -> str:
 
 def coordinator_node(state: PlannerState) -> PlannerState:
     llm = _create_llm("coordinator", temperature=0.2, session_id=state["session_id"])
+    agent = _create_react_agent(llm, tools=[])
     system_message = SystemMessage(
         content=(
             "You are the lead travel coordinator. Extract the key details from the "
             "traveller's request and describe the plan for the specialist agents."
         ),
     )
-    response = llm.invoke([system_message] + state["messages"])
-    state["messages"].append(response)
+    metadata = _agent_metadata(
+        "coordinator",
+        session_id=state["session_id"],
+        temperature=0.2,
+        agent_description="Coordinator agent",
+        span_sources=("AgentExecutor",),
+    )
+    result = agent.invoke(
+        {"messages": [system_message] + state["messages"]},
+        config=_invoke_config(metadata),
+    )
+    response = result["messages"][-1]
+    state["messages"].append(
+        response if isinstance(response, BaseMessage) else AIMessage(content=str(response)),
+    )
     state["current_agent"] = "flight_specialist"
     return state
 
@@ -515,13 +529,14 @@ def build_workflow() -> StateGraph:
     graph.add_node("activity_specialist", activity_specialist_node)
     graph.add_node("dining_specialist", dining_specialist_node)
     graph.add_node("plan_synthesizer", plan_synthesizer_node)
-    graph.add_conditional_edges(START, should_continue)
-    graph.add_conditional_edges("coordinator", should_continue)
-    graph.add_conditional_edges("flight_specialist", should_continue)
-    graph.add_conditional_edges("hotel_specialist", should_continue)
-    graph.add_conditional_edges("activity_specialist", should_continue)
-    graph.add_conditional_edges("dining_specialist", should_continue)
-    graph.add_conditional_edges("plan_synthesizer", should_continue)
+    condition = RunnableLambda(should_continue).with_config({"metadata": {"otel_agent_span": False}})
+    graph.add_conditional_edges(START, condition)
+    graph.add_conditional_edges("coordinator", condition)
+    graph.add_conditional_edges("flight_specialist", condition)
+    graph.add_conditional_edges("hotel_specialist", condition)
+    graph.add_conditional_edges("activity_specialist", condition)
+    graph.add_conditional_edges("dining_specialist", condition)
+    graph.add_conditional_edges("plan_synthesizer", condition)
     return graph
 
 

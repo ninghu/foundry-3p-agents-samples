@@ -38,8 +38,8 @@ agents:
       was_created_by_toolkit: false
     authorizer_configuration:
       customJWTAuthorizer:
-        discoveryUrl: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0/.well-known/openid-configuration
+        discoveryUrl: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/.well-known/openid-configuration
         allowedAudience:
-        - ce7a0eb3-a0c7-4eec-bb59-3b47ab629a17
+        - https://ai.azure.com
     request_header_configuration: null
     oauth_configuration: null

@@ -37,10 +37,7 @@ AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0")
 APPLICATION_INSIGHTS_CONNECTION_STRING = os.getenv(
     "APPLICATION_INSIGHTS_CONNECTION_STRING",
-    "InstrumentationKey=5d1fa8c4-e29b-4c4c-88bf-7882e5ed499b;"
-    "IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;"
-    "LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;"
-    "ApplicationId=905f014f-78bc-4acb-99d4-ff35635c9bfd",
+    "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
 )
 AGENT_NAME = os.getenv("AGENT_NAME", "aws-currency-exchange-agent")
 AGENT_ID = os.getenv("AGENT_ID", "ninhu-aws-agent-1203")
