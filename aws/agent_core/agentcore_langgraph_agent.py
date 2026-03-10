@@ -40,7 +40,7 @@ APPLICATION_INSIGHTS_CONNECTION_STRING = os.getenv(
     "InstrumentationKey=833695c8-90ae-4360-a96d-ecf51b0f875e;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=aa14c7b2-5c89-4d5a-b304-3098cf4a6ec9"
 )
 AGENT_NAME = os.getenv("AGENT_NAME", "aws-currency-exchange-agent")
-AGENT_ID = os.getenv("AGENT_ID", "ninhu-aws-agent-1203")
+AGENT_ID = os.getenv("AGENT_ID", "ninhu-aws-langgraph-agent")
 PROVIDER_NAME = "aws.bedrock"
 SYSTEM_PROMPT = (
     "You help users understand currency exchange rates and related context."
