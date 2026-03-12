@@ -261,7 +261,7 @@ The script queries Application Insights for traces matching your `OTEL_AGENT_ID`
 
 | Symptom | Fix |
 |---|---|
-| **No traces in Foundry** | 1) Verify `APPLICATION_INSIGHTS_CONNECTION_STRING` is correct. 2) Confirm `OTEL_AGENT_ID` matches the *OpenTelemetry Agent ID* in Foundry. 3) Wait 5 min for propagation. 4) If you added App Insights *after* registering, unregister and re-register the agent. |
+| **No traces in Foundry** | 1) Verify `APPLICATION_INSIGHTS_CONNECTION_STRING` is correct. 2) Confirm `OTEL_AGENT_ID` matches the *OpenTelemetry Agent ID* in Foundry. 3) Wait 5 min for propagation. |
 | **Agent registration: no projects shown** | Your Foundry resource needs an AI Gateway. Go to **Operate → Admin → AI Gateway** and add one. |
 | **Health check returns 500** | Check `PROJECT_ENDPOINT` and `AZURE_OPENAI_API_KEY` are set and valid. The agent validates these at startup. |
 | **Timeout on /invoke** | The multi-agent workflow makes ~5 LLM calls sequentially. Increase the HTTP client timeout (default 120s) or check Azure OpenAI quotas. |
