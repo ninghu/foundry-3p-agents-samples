@@ -7,6 +7,10 @@ and agent step — light up in the Foundry portal.
 The agent uses **Azure OpenAI GPT 5.2** and automatically streams OpenTelemetry traces
 to **Application Insights** via the Azure AI Tracer.
 
+## Architecture
+
+![3P Agent E2E Workflow](docs/architecture.png)
+
 ---
 
 ## ✅ Prerequisites
