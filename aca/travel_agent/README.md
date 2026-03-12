@@ -1,11 +1,12 @@
 # 🧪 3P Agents Observability — Hands-on Lab
 
 Welcome! In this lab you'll deploy a **LangGraph travel planner agent** to **Azure Container Apps**,
-register it in **Microsoft Foundry**, and see full end-to-end traces — every LLM call, tool invocation,
-and agent step — light up in the Foundry portal.
+register it in **Microsoft Foundry**, monitor full end-to-end traces — every LLM call, tool invocation,
+and agent step — in the Foundry portal, and run **automated evaluations** against collected traces.
 
 The agent uses **Azure OpenAI GPT 5.2** and automatically streams OpenTelemetry traces
-to **Application Insights** via the Azure AI Tracer.
+to **Application Insights** via the Azure AI Tracer. The evaluation step uses Azure AI built-in
+evaluators (Intent Resolution and Task Adherence) to assess agent quality.
 
 ## Architecture
 
