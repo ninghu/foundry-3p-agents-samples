@@ -146,7 +146,7 @@ def main() -> int:
 
     # Env vars to forward to the container
     forward_keys = [
-        "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY",
+        "PROJECT_ENDPOINT", "AZURE_OPENAI_API_KEY",
         "AZURE_OPENAI_DEPLOYMENT", "AZURE_OPENAI_API_VERSION",
         "APPLICATION_INSIGHTS_CONNECTION_STRING",
         "OTEL_AGENT_ID", "APPLICATION_INSIGHTS_ENABLE_CONTENT",

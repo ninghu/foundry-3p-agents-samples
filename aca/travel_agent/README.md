@@ -31,7 +31,7 @@ Open `.env` and fill in the values:
 
 | Variable | What to set |
 |---|---|
-| `AZURE_OPENAI_ENDPOINT` | Your Azure OpenAI resource endpoint |
+| `PROJECT_ENDPOINT` | Your Microsoft Foundry project endpoint (e.g. `https://your-resource.services.ai.azure.com/api/projects/your-project`) |
 | `AZURE_OPENAI_API_KEY` | API key for the Azure OpenAI resource |
 | `AZURE_OPENAI_DEPLOYMENT` | The deployment name for GPT 5.2 (e.g. `gpt-52`) |
 | `APPLICATION_INSIGHTS_CONNECTION_STRING` | Connection string from the Application Insights resource **connected to your Foundry project** |
@@ -44,15 +44,17 @@ Open `.env` and fill in the values:
 ## 💻 Step 2 — Run Locally
 
 ```powershell
+# Return to the repository root (Step 1 left you in aca/travel_agent)
+cd ..\..
+
 # Create virtual environment
 python -m venv .venv
 .venv\Scripts\Activate.ps1          # Linux/macOS: source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r aca\travel_agent\requirements.txt
 
-# Start the agent server (from the repo root)
-cd ..\..
+# Start the agent server
 python -m uvicorn aca.travel_agent.main:app --host 0.0.0.0 --port 8080
 ```
 
@@ -60,10 +62,10 @@ python -m uvicorn aca.travel_agent.main:app --host 0.0.0.0 --port 8080
 
 ```powershell
 # Health check
-curl http://localhost:8080/healthz
+curl.exe http://localhost:8080/healthz
 
 # Invoke the travel planner
-curl -s http://localhost:8080/invoke `
+curl.exe -s http://localhost:8080/invoke `
   -H "Content-Type: application/json" `
   -d '{"prompt": "Plan a 4-day honeymoon from Seattle to Paris in November."}'
 ```
@@ -106,7 +108,7 @@ Copy the **Agent URL** — you'll need it in the next step! 📋
 ### ✅ Verify the deployment
 
 ```powershell
-curl https://<your-aca-fqdn>/healthz
+curl.exe https://<your-aca-fqdn>/healthz
 ```
 
 ---
@@ -139,9 +141,9 @@ curl https://<your-aca-fqdn>/healthz
    - This is the proxied URL that Foundry manages — use it for traffic generation in Step 5.
 
 > **Why must the IDs match?**
-> The agent code emits spans with `gen_ai.agents.id = "aca-travel-planner"` to Application Insights.
+> The agent code emits spans with `gen_ai.agent.id = "aca-travel-planner"` to Application Insights.
 > Foundry uses the *OpenTelemetry Agent ID* you set during registration to query
-> Application Insights for traces with the matching `gen_ai.agents.id` attribute.
+> Application Insights for traces with the matching `gen_ai.agent.id` attribute.
 > If they don't match, Foundry won't find the traces.
 
 ### 📋 Pre-registration checklist
@@ -200,10 +202,53 @@ You can also check the raw data in Application Insights directly:
 ```kusto
 // Example KQL query in Application Insights → Logs
 dependencies
-| where customDimensions["gen_ai.agents.id"] == "aca-travel-planner"
+| where customDimensions["gen_ai.agent.id"] == "aca-travel-planner"
 | order by timestamp desc
 | take 50
 ```
+
+---
+
+## 📊 Step 7 — Run Trace Evaluations
+
+Run automated evaluations against collected traces using Azure AI built-in evaluators (**Intent Resolution** and **Task Adherence**).
+
+### Prerequisites
+
+1. Add these variables to your `.env` file:
+
+   | Variable | What to set |
+   | --- | --- |
+   | `APPINSIGHTS_RESOURCE_ID` | Full Azure resource ID of your Application Insights instance (find it in Azure portal → Application Insights → **Properties** → **Resource ID**) |
+   | `EVAL_DEPLOYMENT_NAME` | Model deployment name for the evaluator (e.g. `gpt-4.1`) |
+
+   > `eval.py` also reuses `PROJECT_ENDPOINT` from Step 1 — no extra endpoint variable needed.
+
+2. Grant the **Log Analytics Reader** role to your project's managed identity on the Application Insights resource:
+   - Azure portal → Application Insights → **Access control (IAM)** → **Add role assignment**
+   - Role: **Log Analytics Reader**
+   - Assign to: the managed identity of your **Foundry AI Services resource**
+   - Allow up to 10 minutes for propagation
+
+### Run the evaluation
+
+If you already generated traffic in Step 5:
+
+```powershell
+python -m aca.travel_agent.eval --lookback-hours 2
+```
+
+Or generate traffic and evaluate in one step:
+
+```powershell
+python -m aca.travel_agent.eval `
+    --generate-traffic `
+    --url https://<your-apim>.azure-api.net/<your-agent-name> `
+    --count 3 `
+    --wait-minutes 5
+```
+
+The script queries Application Insights for traces matching your `OTEL_AGENT_ID`, submits an evaluation run, and polls until completion. View results in the [Microsoft Foundry](https://ai.azure.com) portal under your project's evaluation section.
 
 ---
 
@@ -213,7 +258,7 @@ dependencies
 |---|---|
 | **No traces in Foundry** | 1) Verify `APPLICATION_INSIGHTS_CONNECTION_STRING` is correct. 2) Confirm `OTEL_AGENT_ID` matches the *OpenTelemetry Agent ID* in Foundry. 3) Wait 5 min for propagation. 4) If you added App Insights *after* registering, unregister and re-register the agent. |
 | **Agent registration: no projects shown** | Your Foundry resource needs an AI Gateway. Go to **Operate → Admin → AI Gateway** and add one. |
-| **Health check returns 500** | Check `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY` are set and valid. The agent validates these at startup. |
+| **Health check returns 500** | Check `PROJECT_ENDPOINT` and `AZURE_OPENAI_API_KEY` are set and valid. The agent validates these at startup. |
 | **Timeout on /invoke** | The multi-agent workflow makes ~5 LLM calls sequentially. Increase the HTTP client timeout (default 120s) or check Azure OpenAI quotas. |
 
 ---
@@ -230,5 +275,6 @@ aca/travel_agent/
 ├── .env.example           # Environment variable template
 ├── deploy.py              # Azure CLI deployment helper
 ├── generate_traffic.py    # Traffic generation script for testing
+├── eval.py                # Trace-based evaluation script
 └── README.md              # This file (lab instructions)
 ```

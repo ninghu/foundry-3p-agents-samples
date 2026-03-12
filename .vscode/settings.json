@@ -2,5 +2,6 @@
     "cSpell.words": [
         "ninhu",
         "vertexai"
-    ]
+    ],
+    "markdown.styles": [".vscode/markdown.css"]
 }

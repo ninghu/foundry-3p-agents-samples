@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Configuration — all from environment variables
 # ---------------------------------------------------------------------------
 
-AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
+PROJECT_ENDPOINT = os.environ.get("PROJECT_ENDPOINT", "")
 AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY", "")
 AZURE_OPENAI_DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-52")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
@@ -95,7 +95,7 @@ def _init_tracer() -> Optional[AzureAIOpenTelemetryTracer]:
 
 
 def _llm(temperature: float = 0.3) -> ChatOpenAI:
-    base_url = AZURE_OPENAI_ENDPOINT.rstrip("/") + "/openai/v1"
+    base_url = PROJECT_ENDPOINT.rstrip("/") + "/openai/v1"
     return ChatOpenAI(
         model=AZURE_OPENAI_DEPLOYMENT,
         base_url=base_url,
@@ -287,9 +287,9 @@ class TravelPlannerAgent:
 
     def __init__(self) -> None:
         global TRACER
-        if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_API_KEY:
+        if not PROJECT_ENDPOINT or not AZURE_OPENAI_API_KEY:
             raise RuntimeError(
-                "Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY in .env"
+                "Set PROJECT_ENDPOINT and AZURE_OPENAI_API_KEY in .env"
             )
         TRACER = _init_tracer()
         self._graph = build_graph().compile(name="aca-travel-planner")
