@@ -1,0 +1,13 @@
+bedrock-agentcore
+boto3
+langchain
+langchain-aws
+langgraph
+requests
+python-dotenv>=1.0.1
+# OpenTelemetry (pure OTel — exports OTLP to ADOT Collector)
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+# Azure Monitor exporter (direct export to App Insights)
+azure-monitor-opentelemetry-exporter

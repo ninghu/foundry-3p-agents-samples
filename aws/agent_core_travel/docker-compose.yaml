@@ -1,0 +1,22 @@
+services:
+  agent:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://adot-collector:4317
+    volumes:
+      - ~/.aws:/home/bedrock_agentcore/.aws:ro
+    depends_on:
+      - adot-collector
+
+  adot-collector:
+    image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+    command: ["--config", "/etc/adot-config.yaml"]
+    volumes:
+      - ./adot-collector-config.yaml:/etc/adot-config.yaml
+    env_file: .env
+    ports:
+      - "4317:4317"
+      - "4318:4318"

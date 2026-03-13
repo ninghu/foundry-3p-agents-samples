@@ -1,0 +1,39 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+  resource:
+    attributes:
+      - key: service.name
+        value: "aws-travel-planner-agent"
+        action: upsert
+
+exporters:
+  # OTLP HTTP exporter → Azure Monitor OTLP ingestion endpoint.
+  # AZURE_MONITOR_OTLP_ENDPOINT and AZURE_MONITOR_IKEY are derived from
+  # your APPLICATION_INSIGHTS_CONNECTION_STRING:
+  #   InstrumentationKey=<IKEY>;IngestionEndpoint=<ENDPOINT>;...
+  #   AZURE_MONITOR_OTLP_ENDPOINT = <IngestionEndpoint>/v1/traces
+  #   AZURE_MONITOR_IKEY          = <InstrumentationKey>
+  otlphttp/azuremonitor:
+    endpoint: ${env:AZURE_MONITOR_OTLP_ENDPOINT}
+    headers:
+      "x-ms-ikey": "${env:AZURE_MONITOR_IKEY}"
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [otlphttp/azuremonitor, debug]
