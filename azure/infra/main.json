@@ -1,0 +1,284 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "2830750643424589335"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "agent",
+      "metadata": {
+        "description": "Friendly environment name used for resource naming."
+      }
+    },
+    "agentappImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+      "metadata": {
+        "description": "Container image to deploy for the agent app. This is set automatically by azd."
+      }
+    },
+    "azureAiProjectEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure AI Foundry project endpoint that the agent uses."
+      }
+    },
+    "azureAiModelDeploymentName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure AI Foundry model deployment name to use when creating ephemeral agents."
+      }
+    },
+    "azureAiAgentId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional existing Azure AI Foundry agent identifier. Leave blank to create ephemeral agents."
+      }
+    }
+  },
+  "variables": {
+    "nameSuffix": "[uniqueString(resourceGroup().id, parameters('environmentName'))]",
+    "safeEnv": "[toLower(replace(parameters('environmentName'), '_', '-'))]",
+    "envToken": "[if(equals(variables('safeEnv'), ''), 'agent', variables('safeEnv'))]",
+    "envSegment": "[substring(variables('envToken'), 0, min(length(variables('envToken')), 12))]",
+    "uniqueSegment": "[substring(variables('nameSuffix'), 0, 13)]",
+    "rawAlnumEnv": "[replace(variables('envToken'), '-', '')]",
+    "normalizedAlnumEnv": "[if(equals(variables('rawAlnumEnv'), ''), 'agent', variables('rawAlnumEnv'))]",
+    "alnumEnvSegment": "[substring(variables('normalizedAlnumEnv'), 0, min(length(variables('normalizedAlnumEnv')), 10))]",
+    "workspaceName": "[toLower(format('{0}-law-{1}', variables('envSegment'), variables('uniqueSegment')))]",
+    "appInsightsName": "[toLower(format('{0}-appi-{1}', variables('envSegment'), variables('uniqueSegment')))]",
+    "containerAppEnvironmentName": "[toLower(format('{0}-cae-{1}', variables('envSegment'), variables('uniqueSegment')))]",
+    "containerAppName": "[toLower(format('{0}-agent-{1}', variables('envSegment'), variables('uniqueSegment')))]",
+    "containerRegistryName": "[toLower(format('acr{0}{1}', variables('alnumEnvSegment'), variables('uniqueSegment')))]",
+    "logAnalyticsSku": "PerGB2018",
+    "workspaceRetentionInDays": 30,
+    "containerRegistryLoginServer": "[format('{0}.azurecr.io', variables('containerRegistryName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('workspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "[variables('logAnalyticsSku')]"
+        },
+        "retentionInDays": "[variables('workspaceRetentionInDays')]",
+        "features": {
+          "enableLogAccessUsingOnlyResourcePermissions": true
+        }
+      },
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]",
+        "azd-service": "agentapp"
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName'))]",
+        "IngestionMode": "LogAnalytics"
+      },
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]",
+        "azd-service": "agentapp"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('containerRegistryName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "adminUserEnabled": false
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]"
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('containerAppEnvironmentName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName')), '2022-10-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName')), '2022-10-01').primarySharedKey]"
+          }
+        }
+      },
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('containerAppName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 80,
+            "transport": "auto"
+          },
+          "registries": [
+            {
+              "server": "[variables('containerRegistryLoginServer')]",
+              "identity": "system"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "application-insights-connection-string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "agentapp",
+              "image": "[parameters('agentappImage')]",
+              "env": [
+                {
+                  "name": "APPLICATION_INSIGHTS_CONNECTION_STRING",
+                  "secretRef": "application-insights-connection-string"
+                },
+                {
+                  "name": "AZURE_AI_PROJECT_ENDPOINT",
+                  "value": "[parameters('azureAiProjectEndpoint')]"
+                },
+                {
+                  "name": "AZURE_AI_MODEL_DEPLOYMENT_NAME",
+                  "value": "[parameters('azureAiModelDeploymentName')]"
+                },
+                {
+                  "name": "AZURE_AI_AGENT_ID",
+                  "value": "[parameters('azureAiAgentId')]"
+                }
+              ],
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              }
+            }
+          ],
+          "scale": {
+            "maxReplicas": 2,
+            "minReplicas": 0
+          }
+        }
+      },
+      "tags": {
+        "azd-env-name": "[parameters('environmentName')]",
+        "azd-service": "agentapp"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', variables('containerRegistryName'))]",
+      "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName')), variables('containerAppName'), 'AcrPull')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "principalId": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', variables('containerAppName'))]",
+        "[resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "service__agentapp__host": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Apps ingress FQDN for the agent service."
+      },
+      "value": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01').configuration.ingress.fqdn]"
+    },
+    "service__agentapp__resourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Apps resource ID for the agent service."
+      },
+      "value": "[resourceId('Microsoft.App/containerApps', variables('containerAppName'))]"
+    },
+    "service__agentapp__principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "System-assigned managed identity principal ID for the agent service."
+      },
+      "value": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01', 'full').identity.principalId]"
+    },
+    "containerRegistryLoginServer": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Registry login server hosting the service images."
+      },
+      "value": "[variables('containerRegistryLoginServer')]"
+    },
+    "containerRegistryResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Registry resource ID."
+      },
+      "value": "[resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName'))]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights connection string for telemetry."
+      },
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+    }
+  }
+}
